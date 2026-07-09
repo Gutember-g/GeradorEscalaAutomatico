@@ -1,0 +1,28 @@
+# Maven / Java
+**/target/
+**/*.class
+**/mvnw
+**/mvnw.cmd
+**/.mvn/
+**/db/*.db
+
+# Node / React
+**/node_modules/
+**/dist/
+**/.env*
+**/*.local
+**/.eslintcache
+**/.vite/
+
+# IDE / OS
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
