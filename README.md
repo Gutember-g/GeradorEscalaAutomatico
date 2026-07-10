@@ -96,3 +96,44 @@ A lógica central está localizada em `EscalaService.java`. O algoritmo:
 2. Garante que um colaborador **não seja escalado em horários coincidentes** no mesmo dia.
 3. Garante o **balanceamento de carga**, escolhendo prioritariamente colaboradores com menos plantões alocados na escala atual.
 4. Gera um relatório detalhado (`RelatorioGeracao`) indicando o status de preenchimento (Total, Parcial ou Não Preenchido) de cada vaga de plantão.
+
+---
+
+## 🌐 Preparação para Deploy em Produção
+
+O sistema está preparado para ser hospedado gratuitamente ou em planos pagos utilizando a seguinte arquitetura de nuvem:
+*   **Banco de Dados:** Neon (PostgreSQL Serverless)
+*   **Backend (API Java):** Render (Web Service)
+*   **Frontend (SPA React):** Vercel (Static Hosting)
+
+### 📋 Ordem Recomendada de Deploy
+
+#### Passo 1: Criar Banco de Dados no Neon
+1. Crie uma conta em [Neon.tech](https://neon.tech/) e crie um novo projeto PostgreSQL.
+2. Copie a **Connection String** gerada (exemplo: `postgresql://neondb_owner:senha@ep-host.neon.tech/neondb?sslmode=require`).
+   * *Dica:* A nossa aplicação possui um parser inteligente interno (`DataSourceConfig.java`) que converterá automaticamente a URL no formato `postgres://` ou `postgresql://` para o formato JDBC `jdbc:postgresql://` exigido pelo Java, incluindo o parâmetro SSL obrigatório (`sslmode=require`).
+
+#### Passo 2: Hospedar o Backend no Render
+1. Crie um novo **Web Service** no [Render.com](https://render.com/) e aponte para o seu repositório Git.
+2. Defina os seguintes parâmetros na criação do serviço:
+   * **Root Directory:** `backend`
+   * **Runtime:** `Docker` (ou `Java` se preferir build nativo com Maven, configurando o comando de build `mvn clean package -DskipTests` e comando de start `java -jar target/*.jar`).
+3. Nas configurações do serviço, adicione as seguintes **Environment Variables**:
+   * `DATABASE_URL`: A Connection String do Neon obtida no Passo 1.
+   * `ALLOWED_ORIGINS`: A URL de produção que seu frontend terá no Vercel (ex: `https://seu-app.vercel.app`), ou `*` para liberar temporariamente (não recomendado para produção).
+   * `JWT_SECRET`: Uma chave aleatória e segura de pelo menos 256 bits (32 caracteres) para assinar os tokens JWT da autenticação.
+   * `PORT`: O Render define essa porta automaticamente na inicialização, e o Spring Boot a escutará de forma reativa.
+4. Ao inicializar, o backend rodará automaticamente as migrações do banco com o Flyway (`V1` a `V6`), inserindo o usuário de suporte Super Admin default (`admin@escalafacil.com` / `admin123`).
+5. A URL final do seu backend no Render será no formato `https://seu-backend.onrender.com`. O endpoint de monitoramento de integridade (Health Check) estará disponível publicamente em `https://seu-backend.onrender.com/health`.
+
+#### Passo 3: Hospedar o Frontend no Vercel
+1. Crie um projeto no [Vercel.com](https://vercel.com/) e conecte com o seu repositório Git.
+2. Configure os seguintes diretórios e variáveis na importação:
+   * **Framework Preset:** `Vite`
+   * **Root Directory:** `frontend`
+   * **Build Command:** `npm run build`
+   * **Output Directory:** `dist`
+3. Nas configurações de **Environment Variables** do Vercel, adicione:
+   * `VITE_API_URL`: A URL do seu backend hospedado no Render com o sufixo `/api` (exemplo: `https://seu-backend.onrender.com/api`).
+4. O arquivo `vercel.json` presente no diretório `/frontend` garante que as rotas internas de SPA (Single Page Application) do React sejam reescritas de volta para o `index.html`, evitando erros de 404 ao atualizar a página.
+

@@ -4,6 +4,28 @@ spring:
   jackson:
     serialization:
       write-dates-as-timestamps: false
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5433/escala_db}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgrespassword}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: ${SHOW_SQL:false}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
 
 server:
-  port: 8080
+  port: ${PORT:8080}
+
+app:
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}
+  jwt:
+    secret: ${JWT_SECRET:defaultSecretKeyWithAtLeast256BitsToSatisfyHs256Requirement}

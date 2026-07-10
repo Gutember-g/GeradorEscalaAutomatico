@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
-import api from '../services/api';
+import api, { API_BASE_URL } from '../services/api';
 
 export interface User {
   nome: string;
@@ -41,7 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, senha: string) => {
     try {
-      const response = await axios.post('http://localhost:8080/api/auth/login', { email, senha });
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, { email, senha });
       const { token: jwtToken, nome, role, nomeOrganizacao } = response.data;
       
       setToken(jwtToken);
@@ -59,7 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (nomeResponsavel: string, email: string, senha: string, nomeParoquia: string) => {
     try {
-      const response = await axios.post('http://localhost:8080/api/auth/register', {
+      const response = await axios.post(`${API_BASE_URL}/auth/register`, {
         nomeResponsavel,
         email,
         senha,

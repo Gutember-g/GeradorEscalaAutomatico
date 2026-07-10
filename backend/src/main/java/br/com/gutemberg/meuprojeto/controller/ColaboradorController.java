@@ -70,6 +70,14 @@ public class ColaboradorController {
         br.com.gutemberg.meuprojeto.model.Organizacao org = organizacaoRepository.findById(tenantId)
                 .orElseThrow(() -> new RuntimeException("Organização não encontrada"));
         
+        if (dto.getNaoTrabalharCom() != null && dto.getPreferenciaTrabalharCom() != null) {
+            for (Long idColab : dto.getNaoTrabalharCom()) {
+                if (dto.getPreferenciaTrabalharCom().contains(idColab)) {
+                    return ResponseEntity.badRequest().body(Map.of("message", "Um colaborador não pode estar nas listas de 'Não trabalhar com' e 'Preferência de trabalho' ao mesmo tempo."));
+                }
+            }
+        }
+
         long count = colaboradorRepository.countByOrganizacaoId(tenantId);
         if (org.getPlano() == br.com.gutemberg.meuprojeto.model.PlanoType.GRATUITO && count >= 10) {
             return ResponseEntity.badRequest().body(Map.of("message", "Limite de colaboradores atingido para o plano Gratuito (máximo 10)."));
@@ -85,8 +93,17 @@ public class ColaboradorController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ColaboradorDTO> atualizar(@PathVariable Long id, @Valid @RequestBody ColaboradorDTO dto) {
+    public ResponseEntity<?> atualizar(@PathVariable Long id, @Valid @RequestBody ColaboradorDTO dto) {
         Long tenantId = SecurityUtils.getCurrentTenantId();
+
+        if (dto.getNaoTrabalharCom() != null && dto.getPreferenciaTrabalharCom() != null) {
+            for (Long idColab : dto.getNaoTrabalharCom()) {
+                if (dto.getPreferenciaTrabalharCom().contains(idColab)) {
+                    return ResponseEntity.badRequest().body(Map.of("message", "Um colaborador não pode estar nas listas de 'Não trabalhar com' e 'Preferência de trabalho' ao mesmo tempo."));
+                }
+            }
+        }
+
         return colaboradorRepository.findByIdAndOrganizacaoId(id, tenantId)
                 .map(colaborador -> {
                     colaborador.setNome(dto.getNome());

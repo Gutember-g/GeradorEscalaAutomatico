@@ -182,4 +182,64 @@ public class EscalaServiceTest {
         assertEquals("TOTALMENTE_PREENCHIDO", relatorio.getStatusEventos().get(0).getStatus()); // e1 preenchido por João
         assertEquals("NAO_PREENCHIDO", relatorio.getStatusEventos().get(1).getStatus()); // e2 não preenchido por conflito de data
     }
+
+    @Test
+    public void testExclusaoMutuaNaoTrabalharComEvitaMesmoEvento() {
+        // Arrange
+        // João (c1) não pode trabalhar com Maria (c2)
+        Colaborador c1 = Colaborador.builder().id(1L).nome("João").naoTrabalharCom(List.of(2L)).build();
+        Colaborador c2 = Colaborador.builder().id(2L).nome("Maria").naoTrabalharCom(List.of(1L)).build();
+
+        // Evento necessita de 2 vagas
+        Evento e1 = Evento.builder().id(1L).nome("Missa").data(LocalDate.of(2026, 7, 10)).horaInicio(LocalTime.of(10, 0)).vagasNecessarias(2).build();
+
+        Escala escala = Escala.builder()
+                .id(1L)
+                .nome("Escala Teste")
+                .dataInicio(LocalDate.of(2026, 7, 1))
+                .dataFim(LocalDate.of(2026, 7, 31))
+                .eventos(List.of(e1))
+                .build();
+
+        when(disponibilidadeRepository.findByEventoIn(anyCollection())).thenReturn(new ArrayList<>());
+
+        // Act
+        RelatorioGeracao relatorio = escalaService.gerarEscalaEmMemoria(escala, List.of(c1, c2));
+
+        // Assert
+        // Apenas 1 das 2 vagas deve ser preenchida, pois eles não podem servir juntos no mesmo evento
+        assertEquals(1, relatorio.getVagasPreenchidas());
+        assertEquals(1, relatorio.getVagasRestantes());
+    }
+
+    @Test
+    public void testPreferenciaDeTrabalhoPriorizaAlocacaoConjunta() {
+        // Arrange
+        // João (c1) prefere trabalhar com Maria (c2)
+        Colaborador c1 = Colaborador.builder().id(1L).nome("João").preferenciaTrabalharCom(List.of(2L)).build();
+        Colaborador c2 = Colaborador.builder().id(2L).nome("Maria").preferenciaTrabalharCom(List.of(1L)).build();
+        Colaborador c3 = Colaborador.builder().id(3L).nome("Pedro").build();
+
+        // Evento com 2 vagas
+        Evento e1 = Evento.builder().id(1L).nome("Missa").data(LocalDate.of(2026, 7, 10)).horaInicio(LocalTime.of(10, 0)).vagasNecessarias(2).build();
+
+        Escala escala = Escala.builder()
+                .id(1L)
+                .nome("Escala Teste")
+                .dataInicio(LocalDate.of(2026, 7, 1))
+                .dataFim(LocalDate.of(2026, 7, 31))
+                .eventos(List.of(e1))
+                .build();
+
+        when(disponibilidadeRepository.findByEventoIn(anyCollection())).thenReturn(new ArrayList<>());
+
+        // Act
+        RelatorioGeracao relatorio = escalaService.gerarEscalaEmMemoria(escala, List.of(c1, c2, c3));
+
+        // Assert
+        // Ambas as vagas devem ser preenchidas por João e Maria devido à preferência mútua
+        assertEquals(2, relatorio.getVagasPreenchidas());
+        assertEquals(c1, escala.getAlocacoes().get(0).getColaborador());
+        assertEquals(c2, escala.getAlocacoes().get(1).getColaborador());
+    }
 }
