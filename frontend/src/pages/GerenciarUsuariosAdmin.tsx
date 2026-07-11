@@ -153,9 +153,16 @@ const GerenciarUsuariosAdmin: React.FC = () => {
     setIsDeleteOpen(true);
   };
 
+  const isConfirmacaoValida = () => {
+    if (!selectedOrg) return false;
+    const inputClean = deleteConfirmText.replace(/^["'“”]|["'“”]$/g, '').trim().toLowerCase();
+    const orgClean = selectedOrg.nome.replace(/^["'“”]|["'“”]$/g, '').trim().toLowerCase();
+    return inputClean === orgClean;
+  };
+
   const handleDelete = async () => {
     if (!selectedOrg) return;
-    if (deleteConfirmText !== selectedOrg.nome) {
+    if (!isConfirmacaoValida()) {
       toast.error('O nome digitado não confere!');
       return;
     }
@@ -580,14 +587,14 @@ const GerenciarUsuariosAdmin: React.FC = () => {
 
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                  Digite <strong className="text-white">"{selectedOrg.nome}"</strong> para confirmar:
+                  Digite <strong className="text-white">{selectedOrg.nome}</strong> para confirmar:
                 </label>
                 <input
                   type="text"
                   value={deleteConfirmText}
                   onChange={(e) => setDeleteConfirmText(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-hidden focus:border-red-500"
-                  placeholder="Nome exato da organização"
+                  placeholder="Nome da organização (sem aspas)"
                 />
               </div>
 
@@ -600,7 +607,7 @@ const GerenciarUsuariosAdmin: React.FC = () => {
                 </button>
                 <button
                   onClick={handleDelete}
-                  disabled={deleteConfirmText !== selectedOrg.nome}
+                  disabled={!isConfirmacaoValida()}
                   className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:hover:bg-red-600 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase transition cursor-pointer"
                 >
                   Confirmar Exclusão

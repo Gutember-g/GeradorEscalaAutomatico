@@ -102,9 +102,13 @@ describe('GerenciarUsuariosAdmin Component', () => {
     expect(btnConfirmar.disabled).toBe(true);
 
     // Digitar nome incorreto
-    const inputConfirmacao = screen.getByPlaceholderText('Nome exato da organização') as HTMLInputElement;
+    const inputConfirmacao = screen.getByPlaceholderText('Nome da organização (sem aspas)') as HTMLInputElement;
     fireEvent.change(inputConfirmacao, { target: { value: 'Nome Errado' } });
     expect(btnConfirmar.disabled).toBe(true);
+
+    // Digitar nome exato com aspas para testar a tolerância
+    fireEvent.change(inputConfirmacao, { target: { value: '"Paróquia Santo Antônio"' } });
+    expect(btnConfirmar.disabled).toBe(false);
 
     // Digitar nome exato
     fireEvent.change(inputConfirmacao, { target: { value: 'Paróquia Santo Antônio' } });
