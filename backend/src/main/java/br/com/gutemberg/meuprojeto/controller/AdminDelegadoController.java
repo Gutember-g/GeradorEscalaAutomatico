@@ -150,6 +150,7 @@ public class AdminDelegadoController {
                     permissaoDelegadaRepository.deleteByUsuarioId(id);
                     // Soft delete do usuário delegado
                     u.setDeletadoEm(java.time.LocalDateTime.now());
+                    u.setEmail(u.getEmail() + ".deletado." + System.currentTimeMillis());
                     u.setTokenVersion(u.getTokenVersion() + 1);
                     usuarioRepository.save(u);
                     return ResponseEntity.noContent().<Void>build();

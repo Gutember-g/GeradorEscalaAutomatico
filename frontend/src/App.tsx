@@ -9,14 +9,43 @@ import DisponibilidadeColaborador from './pages/DisponibilidadeColaborador';
 import Login from './pages/Login';
 import Cadastro from './pages/Cadastro';
 import AdminDashboard from './pages/AdminDashboard';
-import { Calendar, Users, Wand2, FileText, Activity, LogOut, Loader2 } from 'lucide-react';
+import { Calendar, Users, Wand2, FileText, Activity, LogOut, Loader2, Key } from 'lucide-react';
 import type { Colaborador } from './types';
-import { Toaster } from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
+import api from './services/api';
 
 function AppContent() {
   const { user, loading, logout } = useAuth();
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [selectedColaborador, setSelectedColaborador] = useState<Colaborador | null>(null);
+
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [senhaAtual, setSenhaAtual] = useState('');
+  const [novaSenha, setNovaSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (novaSenha !== confirmarSenha) {
+      toast.error('A nova senha e a confirmação não coincidem.');
+      return;
+    }
+    if (novaSenha.length < 6) {
+      toast.error('A nova senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+    try {
+      await api.post('/auth/alterar-senha', { senhaAtual, novaSenha });
+      toast.success('Senha alterada com sucesso! Faça login novamente.');
+      setIsChangePasswordOpen(false);
+      setSenhaAtual('');
+      setNovaSenha('');
+      setConfirmarSenha('');
+      logout();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Erro ao alterar a senha.');
+    }
+  };
 
   useEffect(() => {
     const handleLocationChange = () => {
@@ -191,6 +220,12 @@ function AppContent() {
                 </p>
               </div>
               <button
+                onClick={() => setIsChangePasswordOpen(true)}
+                className="flex items-center gap-1.5 bg-slate-100 hover:bg-indigo-55 hover:text-indigo-600 text-slate-600 px-3.5 py-2 rounded-xl text-xs font-bold tracking-wide uppercase transition cursor-pointer"
+              >
+                <Key size={13} /> Senha
+              </button>
+              <button
                 onClick={logout}
                 className="flex items-center gap-1.5 bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-600 px-3.5 py-2 rounded-xl text-xs font-bold tracking-wide uppercase transition cursor-pointer"
               >
@@ -212,6 +247,84 @@ function AppContent() {
           <p>© {new Date().getFullYear()} EscalaFácil. Gerador de Escalas Automático e Inquilinagem Isolada.</p>
         </div>
       </footer>
+
+      {/* MODAL: ALTERAR SENHA CLIENTE */}
+      {isChangePasswordOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                <Key size={16} className="text-indigo-600" /> Alterar Sua Senha
+              </h3>
+              <button onClick={() => {
+                setIsChangePasswordOpen(false);
+                setSenhaAtual('');
+                setNovaSenha('');
+                setConfirmarSenha('');
+              }} className="text-slate-400 hover:text-slate-650 cursor-pointer">✕</button>
+            </div>
+
+            <form onSubmit={handleChangePassword} className="p-6 space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-550 uppercase mb-1">Senha Atual</label>
+                <input
+                  type="password"
+                  required
+                  value={senhaAtual}
+                  onChange={(e) => setSenhaAtual(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:border-indigo-500"
+                  placeholder="Digite sua senha atual"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-550 uppercase mb-1">Nova Senha</label>
+                <input
+                  type="password"
+                  required
+                  value={novaSenha}
+                  onChange={(e) => setNovaSenha(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:border-indigo-500"
+                  placeholder="Nova senha (mín. 6 caracteres)"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-550 uppercase mb-1">Confirmar Nova Senha</label>
+                <input
+                  type="password"
+                  required
+                  value={confirmarSenha}
+                  onChange={(e) => setConfirmarSenha(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:border-indigo-500"
+                  placeholder="Confirme a nova senha"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsChangePasswordOpen(false);
+                    setSenhaAtual('');
+                    setNovaSenha('');
+                    setConfirmarSenha('');
+                  }}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-xl text-xs font-bold uppercase transition cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase transition cursor-pointer"
+                >
+                  Alterar Senha
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

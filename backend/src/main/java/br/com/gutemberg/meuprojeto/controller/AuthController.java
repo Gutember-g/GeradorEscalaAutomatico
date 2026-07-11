@@ -9,6 +9,8 @@ import br.com.gutemberg.meuprojeto.model.Usuario;
 import br.com.gutemberg.meuprojeto.repository.OrganizacaoRepository;
 import br.com.gutemberg.meuprojeto.repository.UsuarioRepository;
 import br.com.gutemberg.meuprojeto.security.JwtTokenProvider;
+import br.com.gutemberg.meuprojeto.security.SecurityUtils;
+import br.com.gutemberg.meuprojeto.security.UsuarioPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -105,5 +107,36 @@ public class AuthController {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new AuthResponse(jwt, usuario.getNome(), usuario.getEmail(), usuario.getRole(), orgSalva.getNome()));
+    }
+
+    @PostMapping("/alterar-senha")
+    public ResponseEntity<?> alterarSenha(@RequestBody Map<String, String> request) {
+        UsuarioPrincipal principal = SecurityUtils.getCurrentUser();
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Usuário não autenticado."));
+        }
+
+        String senhaAtual = request.get("senhaAtual");
+        String novaSenha = request.get("novaSenha");
+
+        if (senhaAtual == null || novaSenha == null || senhaAtual.trim().isEmpty() || novaSenha.trim().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Senha atual e nova senha são obrigatórias."));
+        }
+
+        Usuario usuario = usuarioRepository.findById(principal.getId())
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado."));
+
+        if (!passwordEncoder.matches(senhaAtual, usuario.getSenha())) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Senha atual incorreta."));
+        }
+
+        usuario.setSenha(passwordEncoder.encode(novaSenha));
+        usuario.setTokenVersion(usuario.getTokenVersion() + 1); // Invalida tokens/sessões anteriores
+        usuarioRepository.save(usuario);
+
+        return ResponseEntity.ok(Map.of("message", "Senha alterada com sucesso!"));
     }
 }

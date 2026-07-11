@@ -317,15 +317,13 @@ const GerenciarUsuariosAdmin: React.FC = () => {
                         >
                           <LogOut size={14} />
                         </button>
-                        {org.id !== 1 && (
-                          <button
-                            onClick={() => handleOpenDelete(org)}
-                            title="Excluir Definitivamente"
-                            className="p-1.5 rounded-lg border border-red-900/30 text-red-500 hover:bg-red-950/40 transition cursor-pointer"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleOpenDelete(org)}
+                          title="Excluir Definitivamente"
+                          className="p-1.5 rounded-lg border border-red-900/30 text-red-500 hover:bg-red-950/40 transition cursor-pointer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     </td>
                   </tr>

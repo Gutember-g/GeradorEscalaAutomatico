@@ -281,6 +281,7 @@ public class AdminController {
                     List<Usuario> usuarios = usuarioRepository.findByOrganizacaoId(org.getId());
                     for (Usuario u : usuarios) {
                         u.setDeletadoEm(agora);
+                        u.setEmail(u.getEmail() + ".deletado." + System.currentTimeMillis());
                         u.setTokenVersion(u.getTokenVersion() + 1); // Invalida tokens ativos
                         usuarioRepository.save(u);
                     }
