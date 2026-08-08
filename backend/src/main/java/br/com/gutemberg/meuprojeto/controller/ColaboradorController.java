@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -89,6 +90,8 @@ public class ColaboradorController {
         Colaborador colaborador = convertToEntity(dto);
         colaborador.setOrganizacao(org);
         Colaborador salvo = colaboradorRepository.save(colaborador);
+        atualizarReciprocidade(salvo, new ArrayList<>(), new ArrayList<>(), tenantId);
+
         return ResponseEntity.status(HttpStatus.CREATED).body(convertToDTO(salvo));
     }
 
@@ -106,15 +109,97 @@ public class ColaboradorController {
 
         return colaboradorRepository.findByIdAndOrganizacaoId(id, tenantId)
                 .map(colaborador -> {
+                    List<Long> oldNtc = new ArrayList<>(colaborador.getNaoTrabalharCom());
+                    List<Long> oldPtc = new ArrayList<>(colaborador.getPreferenciaTrabalharCom());
+
                     colaborador.setNome(dto.getNome());
                     colaborador.setTelefone(dto.getTelefone());
-                    colaborador.setNaoTrabalharCom(dto.getNaoTrabalharCom());
-                    colaborador.setPreferenciaTrabalharCom(dto.getPreferenciaTrabalharCom());
+                    colaborador.setNaoTrabalharCom(dto.getNaoTrabalharCom() != null ? dto.getNaoTrabalharCom() : new ArrayList<>());
+                    colaborador.setPreferenciaTrabalharCom(dto.getPreferenciaTrabalharCom() != null ? dto.getPreferenciaTrabalharCom() : new ArrayList<>());
                     
                     Colaborador atualizado = colaboradorRepository.save(colaborador);
+                    atualizarReciprocidade(atualizado, oldNtc, oldPtc, tenantId);
+
                     return ResponseEntity.ok(convertToDTO(atualizado));
                 })
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    private void atualizarReciprocidade(Colaborador colaborador, List<Long> oldNtc, List<Long> oldPtc, Long tenantId) {
+        Long colabId = colaborador.getId();
+        List<Long> newNtc = colaborador.getNaoTrabalharCom() != null ? colaborador.getNaoTrabalharCom() : new ArrayList<>();
+        List<Long> newPtc = colaborador.getPreferenciaTrabalharCom() != null ? colaborador.getPreferenciaTrabalharCom() : new ArrayList<>();
+
+        List<Long> safeOldNtc = oldNtc != null ? oldNtc : new ArrayList<>();
+        List<Long> safeOldPtc = oldPtc != null ? oldPtc : new ArrayList<>();
+
+        // 1. NTC Adicionados (presentes em newNtc, mas não em oldNtc)
+        for (Long targetId : newNtc) {
+            if (targetId.equals(colabId)) continue;
+            if (!safeOldNtc.contains(targetId)) {
+                colaboradorRepository.findByIdAndOrganizacaoId(targetId, tenantId).ifPresent(target -> {
+                    boolean changed = false;
+                    if (!target.getNaoTrabalharCom().contains(colabId)) {
+                        target.getNaoTrabalharCom().add(colabId);
+                        changed = true;
+                    }
+                    if (target.getPreferenciaTrabalharCom().contains(colabId)) {
+                        target.getPreferenciaTrabalharCom().remove(colabId);
+                        changed = true;
+                    }
+                    if (changed) {
+                        colaboradorRepository.save(target);
+                    }
+                });
+            }
+        }
+
+        // 2. NTC Removidos (presentes em oldNtc, mas não em newNtc)
+        for (Long targetId : safeOldNtc) {
+            if (targetId.equals(colabId)) continue;
+            if (!newNtc.contains(targetId)) {
+                colaboradorRepository.findByIdAndOrganizacaoId(targetId, tenantId).ifPresent(target -> {
+                    if (target.getNaoTrabalharCom().contains(colabId)) {
+                        target.getNaoTrabalharCom().remove(colabId);
+                        colaboradorRepository.save(target);
+                    }
+                });
+            }
+        }
+
+        // 3. PTC Adicionados (presentes em newPtc, mas não em oldPtc)
+        for (Long targetId : newPtc) {
+            if (targetId.equals(colabId)) continue;
+            if (!safeOldPtc.contains(targetId)) {
+                colaboradorRepository.findByIdAndOrganizacaoId(targetId, tenantId).ifPresent(target -> {
+                    boolean changed = false;
+                    if (!target.getPreferenciaTrabalharCom().contains(colabId)) {
+                        target.getPreferenciaTrabalharCom().add(colabId);
+                        changed = true;
+                    }
+                    if (target.getNaoTrabalharCom().contains(colabId)) {
+                        target.getNaoTrabalharCom().remove(colabId);
+                        changed = true;
+                    }
+                    if (changed) {
+                        colaboradorRepository.save(target);
+                    }
+                });
+            }
+        }
+
+        // 4. PTC Removidos (presentes em oldPtc, mas não em newPtc)
+        for (Long targetId : safeOldPtc) {
+            if (targetId.equals(colabId)) continue;
+            if (!newPtc.contains(targetId)) {
+                colaboradorRepository.findByIdAndOrganizacaoId(targetId, tenantId).ifPresent(target -> {
+                    if (target.getPreferenciaTrabalharCom().contains(colabId)) {
+                        target.getPreferenciaTrabalharCom().remove(colabId);
+                        colaboradorRepository.save(target);
+                    }
+                });
+            }
+        }
     }
 
     @DeleteMapping("/{id}")

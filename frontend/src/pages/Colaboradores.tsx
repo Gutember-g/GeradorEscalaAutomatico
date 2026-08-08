@@ -112,11 +112,17 @@ const Colaboradores: React.FC<ColaboradoresProps> = ({ onSelectColaboradorForDis
     try {
       setBulkEventosLoading(true);
       const data = await eventoService.listar();
-      // Filtrar pelo mês e ano
-      const evts = data.filter(e => {
-        const parts = e.data.split('-');
-        return Number(parts[1]) === bulkMes && Number(parts[0]) === bulkAno;
-      });
+      // Filtrar pelo mês e ano e ordenar por data e hora de início (do mais antigo para o mais recente)
+      const evts = data
+        .filter(e => {
+          const parts = e.data.split('-');
+          return Number(parts[1]) === bulkMes && Number(parts[0]) === bulkAno;
+        })
+        .sort((a, b) => {
+          const dateComp = a.data.localeCompare(b.data);
+          if (dateComp !== 0) return dateComp;
+          return a.horaInicio.localeCompare(b.horaInicio);
+        });
       setBulkEventos(evts);
     } catch (err) {
       console.error('Erro ao buscar eventos para lote:', err);
@@ -225,7 +231,7 @@ const Colaboradores: React.FC<ColaboradoresProps> = ({ onSelectColaboradorForDis
     try {
       setSaving(true);
 
-      await Promise.all(selectedIds.map(async (colabId) => {
+      for (const colabId of selectedIds) {
         const colabObj = colaboradores.find(c => c.id === colabId)!;
 
         // 1. Relacionamentos
@@ -257,7 +263,7 @@ const Colaboradores: React.FC<ColaboradoresProps> = ({ onSelectColaboradorForDis
 
           await colaboradorService.salvarDisponibilidade(colabId, updatedDisps);
         }
-      }));
+      }
 
       toast.success('Colaboradores atualizados em lote com sucesso! 🎉✅', { id: loadingToast });
       setIsBulkEditOpen(false);

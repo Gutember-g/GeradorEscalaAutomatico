@@ -21,6 +21,9 @@ vi.mock('../services/api', () => ({
 describe('DisponibilidadeColaborador Component', () => {
   const mockColaborador = { id: 1, nome: 'João Silva', telefone: '9999-9999' };
   const mockOnVoltar = vi.fn();
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
+  const monthStr = String(currentMonth).padStart(2, '0');
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -36,7 +39,7 @@ describe('DisponibilidadeColaborador Component', () => {
       preferenciaTrabalharCom: []
     });
     (colaboradorService.obterDisponibilidade as any).mockResolvedValue([
-      { eventoId: 10, nomeEvento: 'Missa das 10h', data: '2026-07-10', horaInicio: '10:00:00', indisponivel: false }
+      { eventoId: 10, nomeEvento: 'Missa das 10h', data: `${currentYear}-${monthStr}-10`, horaInicio: '10:00:00', indisponivel: false }
     ]);
     (colaboradorService.salvarDisponibilidade as any).mockResolvedValue({});
     (colaboradorService.atualizar as any).mockResolvedValue({});
@@ -100,8 +103,8 @@ describe('DisponibilidadeColaborador Component', () => {
       {
         id: 5,
         nome: 'Escala Mensal',
-        dataInicio: '2026-07-01',
-        dataFim: '2026-07-31',
+        dataInicio: `${currentYear}-${monthStr}-01`,
+        dataFim: `${currentYear}-${monthStr}-28`,
         eventos: [],
         alocacoes: [
           { id: 99, eventoId: 10, colaboradorId: 2, colaboradorNome: 'Maria Souza' }

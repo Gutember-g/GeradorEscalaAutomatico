@@ -131,4 +131,58 @@ public class ColaboradorControllerTest {
         Map<?, ?> body = (Map<?, ?>) response.getBody();
         assertEquals("Um colaborador não pode estar nas listas de 'Não trabalhar com' e 'Preferência de trabalho' ao mesmo tempo.", body.get("message"));
     }
+
+    @Test
+    public void testReciprocidadeAdicionarERemoverConflito() {
+        // Arrange
+        Colaborador joao = Colaborador.builder().id(1L).nome("João").naoTrabalharCom(new ArrayList<>()).preferenciaTrabalharCom(new ArrayList<>()).build();
+        Colaborador maria = Colaborador.builder().id(2L).nome("Maria").naoTrabalharCom(new ArrayList<>()).preferenciaTrabalharCom(new ArrayList<>()).build();
+
+        when(colaboradorRepository.findByIdAndOrganizacaoId(1L, 1L)).thenReturn(Optional.of(joao));
+        when(colaboradorRepository.findByIdAndOrganizacaoId(2L, 1L)).thenReturn(Optional.of(maria));
+        when(colaboradorRepository.save(any(Colaborador.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act 1: João marca Maria em naoTrabalharCom
+        ColaboradorDTO dtoAdicionar = ColaboradorDTO.builder().id(1L).nome("João").naoTrabalharCom(List.of(2L)).build();
+        ResponseEntity<?> respAdd = controller.atualizar(1L, dtoAdicionar);
+
+        // Assert 1: Maria deve conter 1L em naoTrabalharCom
+        assertEquals(HttpStatus.OK, respAdd.getStatusCode());
+        assertEquals(List.of(1L), maria.getNaoTrabalharCom());
+
+        // Act 2: João desmarca Maria
+        ColaboradorDTO dtoRemover = ColaboradorDTO.builder().id(1L).nome("João").naoTrabalharCom(new ArrayList<>()).build();
+        ResponseEntity<?> respRem = controller.atualizar(1L, dtoRemover);
+
+        // Assert 2: Maria não deve mais conter 1L em naoTrabalharCom
+        assertEquals(HttpStatus.OK, respRem.getStatusCode());
+        assertEquals(0, maria.getNaoTrabalharCom().size());
+    }
+
+    @Test
+    public void testReciprocidadeAdicionarERemoverParceria() {
+        // Arrange
+        Colaborador joao = Colaborador.builder().id(1L).nome("João").naoTrabalharCom(new ArrayList<>()).preferenciaTrabalharCom(new ArrayList<>()).build();
+        Colaborador maria = Colaborador.builder().id(2L).nome("Maria").naoTrabalharCom(new ArrayList<>()).preferenciaTrabalharCom(new ArrayList<>()).build();
+
+        when(colaboradorRepository.findByIdAndOrganizacaoId(1L, 1L)).thenReturn(Optional.of(joao));
+        when(colaboradorRepository.findByIdAndOrganizacaoId(2L, 1L)).thenReturn(Optional.of(maria));
+        when(colaboradorRepository.save(any(Colaborador.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act 1: João marca Maria em preferenciaTrabalharCom
+        ColaboradorDTO dtoAdicionar = ColaboradorDTO.builder().id(1L).nome("João").preferenciaTrabalharCom(List.of(2L)).build();
+        ResponseEntity<?> respAdd = controller.atualizar(1L, dtoAdicionar);
+
+        // Assert 1: Maria deve conter 1L em preferenciaTrabalharCom
+        assertEquals(HttpStatus.OK, respAdd.getStatusCode());
+        assertEquals(List.of(1L), maria.getPreferenciaTrabalharCom());
+
+        // Act 2: João desmarca Maria das parcerias
+        ColaboradorDTO dtoRemover = ColaboradorDTO.builder().id(1L).nome("João").preferenciaTrabalharCom(new ArrayList<>()).build();
+        ResponseEntity<?> respRem = controller.atualizar(1L, dtoRemover);
+
+        // Assert 2: Maria não deve mais conter 1L em preferenciaTrabalharCom
+        assertEquals(HttpStatus.OK, respRem.getStatusCode());
+        assertEquals(0, maria.getPreferenciaTrabalharCom().size());
+    }
 }

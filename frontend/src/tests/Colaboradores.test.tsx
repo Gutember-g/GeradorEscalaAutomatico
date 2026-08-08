@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import Colaboradores from '../pages/Colaboradores';
-import { colaboradorService } from '../services/api';
+import { colaboradorService, eventoService } from '../services/api';
 import toast from 'react-hot-toast';
 
 vi.mock('../services/api', () => ({
@@ -10,6 +10,11 @@ vi.mock('../services/api', () => ({
     criar: vi.fn(() => Promise.resolve({ id: 1, nome: 'João Silva', telefone: '9999-9999' })),
     atualizar: vi.fn(() => Promise.resolve({})),
     deletar: vi.fn(() => Promise.resolve()),
+    obterDisponibilidade: vi.fn(() => Promise.resolve([])),
+    salvarDisponibilidade: vi.fn(() => Promise.resolve()),
+  },
+  eventoService: {
+    listar: vi.fn(() => Promise.resolve([])),
   }
 }));
 
@@ -100,5 +105,46 @@ describe('Colaboradores Component', () => {
     await screen.findByText(/selecionados/i);
     expect(screen.getByText('2', { selector: 'strong' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Editar em Lote/i })).toBeInTheDocument();
+  });
+
+  it('deve ordenar cronologicamente os eventos no modal de edicao em lote na aba disponibilidade', async () => {
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+    const monthStr = String(currentMonth).padStart(2, '0');
+
+    (colaboradorService.listar as any).mockResolvedValue([
+      { id: 1, nome: 'Alberto' },
+      { id: 2, nome: 'Bernardo' }
+    ]);
+
+    // Mockar eventos fora de ordem cronológica para o mês atual
+    (eventoService.listar as any).mockResolvedValue([
+      { id: 101, nome: 'Culto da Noite', data: `${currentYear}-${monthStr}-15`, horaInicio: '19:00:00' },
+      { id: 102, nome: 'Missa da Manhã', data: `${currentYear}-${monthStr}-01`, horaInicio: '08:00:00' },
+      { id: 103, nome: 'Missa do Meio-dia', data: `${currentYear}-${monthStr}-01`, horaInicio: '12:00:00' }
+    ]);
+
+    render(<Colaboradores onSelectColaboradorForDisponibilidade={vi.fn()} />);
+
+    // Selecionar todos os colaboradores
+    const checkboxes = await screen.findAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]);
+
+    // Abrir modal de edição em lote
+    const btnLote = await screen.findByRole('button', { name: /Editar em Lote/i });
+    fireEvent.click(btnLote);
+
+    // Mudar para aba "Disponibilidade Mensal"
+    const tabDisp = screen.getByRole('button', { name: /Disponibilidade Mensal/i });
+    fireEvent.click(tabDisp);
+
+    // Aguardar o carregamento dos eventos
+    await screen.findByText('Missa da Manhã');
+
+    // Verificar se a ordem na renderização é: Missa da Manhã (01/08h), Missa do Meio-dia (01/12h), Culto da Noite (15/19h)
+    const eventosRend = screen.getAllByText(/(Missa da Manhã|Missa do Meio-dia|Culto da Noite)/);
+    expect(eventosRend[0].textContent).toBe('Missa da Manhã');
+    expect(eventosRend[1].textContent).toBe('Missa do Meio-dia');
+    expect(eventosRend[2].textContent).toBe('Culto da Noite');
   });
 });
