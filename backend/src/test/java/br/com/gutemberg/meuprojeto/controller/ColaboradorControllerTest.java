@@ -138,6 +138,7 @@ public class ColaboradorControllerTest {
         Colaborador joao = Colaborador.builder().id(1L).nome("João").naoTrabalharCom(new ArrayList<>()).preferenciaTrabalharCom(new ArrayList<>()).build();
         Colaborador maria = Colaborador.builder().id(2L).nome("Maria").naoTrabalharCom(new ArrayList<>()).preferenciaTrabalharCom(new ArrayList<>()).build();
 
+        when(colaboradorRepository.findByOrganizacaoId(1L)).thenReturn(List.of(joao, maria));
         when(colaboradorRepository.findByIdAndOrganizacaoId(1L, 1L)).thenReturn(Optional.of(joao));
         when(colaboradorRepository.findByIdAndOrganizacaoId(2L, 1L)).thenReturn(Optional.of(maria));
         when(colaboradorRepository.save(any(Colaborador.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -165,6 +166,7 @@ public class ColaboradorControllerTest {
         Colaborador joao = Colaborador.builder().id(1L).nome("João").naoTrabalharCom(new ArrayList<>()).preferenciaTrabalharCom(new ArrayList<>()).build();
         Colaborador maria = Colaborador.builder().id(2L).nome("Maria").naoTrabalharCom(new ArrayList<>()).preferenciaTrabalharCom(new ArrayList<>()).build();
 
+        when(colaboradorRepository.findByOrganizacaoId(1L)).thenReturn(List.of(joao, maria));
         when(colaboradorRepository.findByIdAndOrganizacaoId(1L, 1L)).thenReturn(Optional.of(joao));
         when(colaboradorRepository.findByIdAndOrganizacaoId(2L, 1L)).thenReturn(Optional.of(maria));
         when(colaboradorRepository.save(any(Colaborador.class))).thenAnswer(invocation -> invocation.getArgument(0));
