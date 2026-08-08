@@ -14,6 +14,9 @@ import jakarta.persistence.Table;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.JoinColumn;
 
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+
 @Entity
 @Table(name = "escalas")
 public class Escala {
@@ -32,9 +35,11 @@ public class Escala {
     private LocalDate dataFim;
 
     @OneToMany(mappedBy = "escala", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Fetch(FetchMode.SUBSELECT)
     private List<Evento> eventos = new ArrayList<>();
 
     @OneToMany(mappedBy = "escala", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Fetch(FetchMode.SUBSELECT)
     private List<Alocacao> alocacoes = new ArrayList<>();
 
     @ManyToOne(optional = false)

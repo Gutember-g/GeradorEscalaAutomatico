@@ -25,7 +25,7 @@ public class Alocacao {
     @JoinColumn(name = "evento_id", nullable = false)
     private Evento evento;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "colaborador_id", nullable = false)
     private Colaborador colaborador;
 

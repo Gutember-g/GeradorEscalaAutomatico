@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { eventoService } from '../services/api';
 import type { Evento } from '../types';
 import { formatarDataComDiaSemana } from '../utils/dateUtils';
@@ -394,24 +394,28 @@ const Eventos: React.FC = () => {
     }
   };
 
-  // Filtragem combinada de eventos
-  const eventosFiltrados = eventos.filter(e => {
-    if (filtroNome && !e.nome.toLowerCase().includes(filtroNome.toLowerCase())) return false;
-    if (filtroVagas && e.vagasNecessarias !== Number(filtroVagas)) return false;
-    if (filtroCor && e.corLiturgica !== filtroCor) return false;
-    if (filtroHora && e.horaInicio.slice(0, 5) !== filtroHora) return false;
-    return true;
-  });
+  // Filtragem e Ordenação Combinada de Eventos (Memoizados)
+  const eventosOrdenados = useMemo(() => {
+    const nomeTermo = filtroNome.toLowerCase();
+    const filtrados = eventos.filter(e => {
+      if (filtroNome && !e.nome.toLowerCase().includes(nomeTermo)) return false;
+      if (filtroVagas && e.vagasNecessarias !== Number(filtroVagas)) return false;
+      if (filtroCor && e.corLiturgica !== filtroCor) return false;
+      if (filtroHora && e.horaInicio.slice(0, 5) !== filtroHora) return false;
+      return true;
+    });
 
-  // Ordena os eventos por data de forma crescente (dos mais próximos aos mais distantes)
-  const eventosOrdenados = [...eventosFiltrados].sort((a, b) => {
-    const dateDiff = a.data.localeCompare(b.data);
-    if (dateDiff !== 0) return dateDiff;
-    return a.horaInicio.localeCompare(b.horaInicio);
-  });
+    return filtrados.sort((a, b) => {
+      const dateDiff = a.data.localeCompare(b.data);
+      if (dateDiff !== 0) return dateDiff;
+      return a.horaInicio.localeCompare(b.horaInicio);
+    });
+  }, [eventos, filtroNome, filtroVagas, filtroCor, filtroHora]);
 
-  // Obter horários únicos para o filtro
-  const horáriosUnicos = [...new Set(eventos.map(e => e.horaInicio.slice(0, 5)))].sort();
+  // Obter horários únicos para o filtro (Memoizados)
+  const horáriosUnicos = useMemo(() => {
+    return [...new Set(eventos.map(e => e.horaInicio.slice(0, 5)))].sort();
+  }, [eventos]);
 
   // Calendário Utils
   const diasNoMes = new Date(currentYear, currentMonth, 0).getDate();

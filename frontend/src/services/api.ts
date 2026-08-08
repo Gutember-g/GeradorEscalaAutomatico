@@ -62,7 +62,8 @@ export const colaboradorService = {
 };
 
 export const eventoService = {
-  listar: () => api.get<Evento[]>('/eventos').then(res => res.data),
+  listar: (params?: { mes?: number; ano?: number; inicio?: string; fim?: string }) => 
+    api.get<Evento[]>('/eventos', { params }).then(res => res.data),
   buscarPorId: (id: number) => api.get<Evento>(`/eventos/${id}`).then(res => res.data),
   criar: (data: Evento) => api.post<Evento>('/eventos', data).then(res => res.data),
   atualizar: (id: number, data: Evento) => api.put<Evento>(`/eventos/${id}`, data).then(res => res.data),

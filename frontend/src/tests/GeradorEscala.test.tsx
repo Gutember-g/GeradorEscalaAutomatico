@@ -23,15 +23,20 @@ vi.mock('../context/AuthContext', () => ({
   })
 }));
 
+const now = new Date();
+const currentYear = now.getFullYear();
+const currentMonthStr = String(now.getMonth() + 1).padStart(2, '0');
+const mockDate = `${currentYear}-${currentMonthStr}-10`;
+
 describe('GeradorEscala Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (colaboradorService.listar as any).mockResolvedValue([{ id: 1, nome: "João" }]);
-    (eventoService.listar as any).mockResolvedValue([{ id: 1, nome: "Missa", data: "2026-07-10", horaInicio: "10:00:00" }]);
+    (eventoService.listar as any).mockResolvedValue([{ id: 1, nome: "Missa", data: mockDate, horaInicio: "10:00:00" }]);
     (escalaService.listar as any).mockResolvedValue([]);
     (escalaService.gerar as any).mockResolvedValue({
       id: 10,
-      nome: "Escala Julho/2026",
+      nome: `Escala Mês/${currentYear}`,
       vagasPreenchidas: 1,
       vagasRestantes: 0,
       totalVagas: 1,
@@ -41,7 +46,7 @@ describe('GeradorEscala Component', () => {
           eventoNome: "Missa 1",
           status: "TOTALMENTE_PREENCHIDO",
           motivo: "",
-          data: "2026-07-10",
+          data: mockDate,
           horaInicio: "10:00:00",
           corLiturgica: "Verde",
           nome: "Missa 1",

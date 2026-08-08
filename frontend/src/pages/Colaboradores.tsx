@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { colaboradorService, eventoService } from '../services/api';
 import type { Colaborador, Evento } from '../types';
 import { 
@@ -111,18 +111,12 @@ const Colaboradores: React.FC<ColaboradoresProps> = ({ onSelectColaboradorForDis
   const carregarEventosLote = async () => {
     try {
       setBulkEventosLoading(true);
-      const data = await eventoService.listar();
-      // Filtrar pelo mês e ano e ordenar por data e hora de início (do mais antigo para o mais recente)
-      const evts = data
-        .filter(e => {
-          const parts = e.data.split('-');
-          return Number(parts[1]) === bulkMes && Number(parts[0]) === bulkAno;
-        })
-        .sort((a, b) => {
-          const dateComp = a.data.localeCompare(b.data);
-          if (dateComp !== 0) return dateComp;
-          return a.horaInicio.localeCompare(b.horaInicio);
-        });
+      const data = await eventoService.listar({ mes: bulkMes, ano: bulkAno });
+      const evts = data.sort((a, b) => {
+        const dateComp = a.data.localeCompare(b.data);
+        if (dateComp !== 0) return dateComp;
+        return a.horaInicio.localeCompare(b.horaInicio);
+      });
       setBulkEventos(evts);
     } catch (err) {
       console.error('Erro ao buscar eventos para lote:', err);
@@ -380,14 +374,13 @@ const Colaboradores: React.FC<ColaboradoresProps> = ({ onSelectColaboradorForDis
     reader.readAsArrayBuffer(file);
   };
 
-  // Filtragem e Ordenação Alfabética dos Colaboradores
-  const colaboradoresFiltrados = colaboradores.filter(c =>
-    c.nome.toLowerCase().includes(buscaNome.toLowerCase())
-  );
-  
-  const colaboradoresOrdenados = [...colaboradoresFiltrados].sort((a, b) =>
-    a.nome.localeCompare(b.nome)
-  );
+  // Filtragem e Ordenação Alfabética dos Colaboradores (Memoizados)
+  const colaboradoresOrdenados = useMemo(() => {
+    const termo = buscaNome.toLowerCase();
+    return colaboradores
+      .filter(c => c.nome.toLowerCase().includes(termo))
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [colaboradores, buscaNome]);
 
   const toggleSelectColaborador = (id: number) => {
     setSelectedIds(prev =>

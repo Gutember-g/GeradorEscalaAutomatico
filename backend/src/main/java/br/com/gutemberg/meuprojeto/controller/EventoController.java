@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
@@ -35,9 +36,27 @@ public class EventoController {
     }
 
     @GetMapping
-    public List<EventoDTO> listar() {
+    public List<EventoDTO> listar(
+            @RequestParam(required = false) Integer mes,
+            @RequestParam(required = false) Integer ano,
+            @RequestParam(required = false) String inicio,
+            @RequestParam(required = false) String fim) {
         Long tenantId = SecurityUtils.getCurrentTenantId();
-        return eventoRepository.findByOrganizacaoId(tenantId).stream()
+        List<Evento> eventos;
+
+        if (inicio != null && fim != null) {
+            java.time.LocalDate dInicio = java.time.LocalDate.parse(inicio);
+            java.time.LocalDate dFim = java.time.LocalDate.parse(fim);
+            eventos = eventoRepository.findByOrganizacaoIdAndDataBetween(tenantId, dInicio, dFim);
+        } else if (mes != null && ano != null) {
+            java.time.LocalDate dInicio = java.time.LocalDate.of(ano, mes, 1);
+            java.time.LocalDate dFim = dInicio.withDayOfMonth(dInicio.lengthOfMonth());
+            eventos = eventoRepository.findByOrganizacaoIdAndDataBetween(tenantId, dInicio, dFim);
+        } else {
+            eventos = eventoRepository.findByOrganizacaoId(tenantId);
+        }
+
+        return eventos.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }

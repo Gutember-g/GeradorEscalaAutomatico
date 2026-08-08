@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { escalaService } from '../services/api';
 import type { Escala } from '../types';
 import { formatarDataComDiaSemana } from '../utils/dateUtils';
@@ -66,9 +66,20 @@ const Historico: React.FC = () => {
     }
   };
 
+  const alocacoesPorEventoMap = useMemo(() => {
+    const map = new Map<number, any[]>();
+    if (!selectedEscala || !selectedEscala.alocacoes) return map;
+    for (const a of selectedEscala.alocacoes) {
+      if (!map.has(a.eventoId)) {
+        map.set(a.eventoId, []);
+      }
+      map.get(a.eventoId)!.push(a);
+    }
+    return map;
+  }, [selectedEscala]);
+
   const getColaboradoresPorEvento = (eventoId: number) => {
-    if (!selectedEscala || !selectedEscala.alocacoes) return [];
-    return selectedEscala.alocacoes.filter(a => a.eventoId === eventoId);
+    return alocacoesPorEventoMap.get(eventoId) || [];
   };
 
   const handleExportarExcel = async (e: React.MouseEvent) => {

@@ -65,32 +65,27 @@ const DisponibilidadeColaborador: React.FC<DisponibilidadeColaboradorProps> = ({
     
     // Carregar escalas salvas para exibir alocações cruzadas
     escalaService.listar().then(setEscalas).catch(console.error);
-
-    // Carregar informações atualizadas do colaborador
-    if (colaborador.id) {
-      colaboradorService.buscarPorId(colaborador.id)
-        .then(data => {
-          setColaboradorInfo(data);
-          setNaoTrabalharCom(data.naoTrabalharCom || []);
-          setPreferenciaTrabalharCom(data.preferenciaTrabalharCom || []);
-        })
-        .catch(console.error);
-    }
-  }, [colaborador.id]);
+  }, []);
 
   useEffect(() => {
     if (colaborador.id) {
-      carregarDisponibilidades();
+      carregarDados();
       setSelectedDay(null); // Reset day selection on period change
     }
   }, [colaborador.id, mes, ano]);
 
-  const carregarDisponibilidades = async () => {
+  const carregarDados = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await colaboradorService.obterDisponibilidade(colaborador.id!, mes, ano);
-      setDisponibilidades(data);
+      const [colabData, dispData] = await Promise.all([
+        colaboradorService.buscarPorId(colaborador.id!),
+        colaboradorService.obterDisponibilidade(colaborador.id!, mes, ano)
+      ]);
+      setColaboradorInfo(colabData);
+      setNaoTrabalharCom(colabData.naoTrabalharCom || []);
+      setPreferenciaTrabalharCom(colabData.preferenciaTrabalharCom || []);
+      setDisponibilidades(dispData);
     } catch (err: any) {
       setError('Erro ao carregar os eventos e disponibilidades para o mês selecionado.');
       console.error(err);
