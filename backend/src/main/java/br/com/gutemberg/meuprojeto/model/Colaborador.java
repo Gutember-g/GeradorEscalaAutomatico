@@ -28,12 +28,12 @@ public class Colaborador {
 
     private String telefone;
 
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "colaborador_nao_trabalhar_com", joinColumns = @JoinColumn(name = "colaborador_id"))
     @Column(name = "outro_colaborador_id")
     private List<Long> naoTrabalharCom = new ArrayList<>();
 
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "colaborador_preferencia_trabalhar_com", joinColumns = @JoinColumn(name = "colaborador_id"))
     @Column(name = "outro_colaborador_id")
     private List<Long> preferenciaTrabalharCom = new ArrayList<>();

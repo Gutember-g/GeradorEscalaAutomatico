@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { colaboradorService, escalaService } from '../services/api';
-import type { Colaborador, Disponibilidade, Escala } from '../types';
+import { colaboradorService, alocacaoService } from '../services/api';
+import type { AlocacaoLight } from '../services/api';
+import type { Colaborador, Disponibilidade } from '../types';
 import { formatarDataComDiaSemana } from '../utils/dateUtils';
 import { 
   Calendar as CalendarIcon, 
@@ -27,7 +28,8 @@ const DisponibilidadeColaborador: React.FC<DisponibilidadeColaboradorProps> = ({
   const [mes, setMes] = useState<number>(new Date().getMonth() + 1);
   const [ano, setAno] = useState<number>(new Date().getFullYear());
   const [disponibilidades, setDisponibilidades] = useState<Disponibilidade[]>([]);
-  const [escalas, setEscalas] = useState<Escala[]>([]);
+  // G4: alocacoes leves em vez do array completo de Escala[]
+  const [alocacoesDoMes, setAlocacoesDoMes] = useState<AlocacaoLight[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,10 +64,14 @@ const DisponibilidadeColaborador: React.FC<DisponibilidadeColaboradorProps> = ({
   useEffect(() => {
     // Carregar todos os colaboradores para as opções de convivência
     colaboradorService.listar().then(setTodosColaboradores).catch(console.error);
-    
-    // Carregar escalas salvas para exibir alocações cruzadas
-    escalaService.listar().then(setEscalas).catch(console.error);
   }, []);
+
+  // G4: carrega alocações leves sempre que muda o período (1 query em vez de payload completo)
+  useEffect(() => {
+    alocacaoService.listarPorPeriodo(mes, ano)
+      .then(setAlocacoesDoMes)
+      .catch(console.error);
+  }, [mes, ano]);
 
   useEffect(() => {
     if (colaborador.id) {
@@ -133,10 +139,9 @@ const DisponibilidadeColaborador: React.FC<DisponibilidadeColaboradorProps> = ({
   const diasNoMes = new Date(ano, mes, 0).getDate();
   const primeiroDiaSemana = new Date(ano, mes - 1, 1).getDay();
 
-  // Mapear alocações por evento
+  // G4: obterOutrosEscalados agora usa o array leve de AlocacaoLight
   const obterOutrosEscalados = (eventoId: number) => {
-    return escalas
-      .flatMap(escala => escala.alocacoes || [])
+    return alocacoesDoMes
       .filter(a => a.eventoId === eventoId && a.colaboradorId !== colaborador.id)
       .map(a => a.colaboradorNome);
   };

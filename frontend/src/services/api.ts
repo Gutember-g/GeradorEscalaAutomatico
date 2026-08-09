@@ -18,13 +18,15 @@ const api = axios.create({
   },
 });
 
-// Interceptor de requisição para adicionar o token JWT
+// Interceptor de requisição para adicionar o token JWT + timestamp de início (PERF)
 api.interceptors.request.use(
   (config) => {
     const token = sessionStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // Instrumentação de performance — removível após coleta dos números
+    (config as any)._t0 = performance.now();
     return config;
   },
   (error) => {
@@ -32,9 +34,23 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptor de resposta para interceptar expiracação de sessão (401/403)
+// Interceptor de resposta para interceptar expiração de sessão (401/403) + log de performance
 api.interceptors.response.use(
   (response) => {
+    // Log de performance (remover após coleta dos números)
+    const t0 = (response.config as any)._t0;
+    if (t0 != null) {
+      const ms = (performance.now() - t0).toFixed(0);
+      const bytes = JSON.stringify(response.data).length;
+      const kb = (bytes / 1024).toFixed(1);
+      const method = response.config.method?.toUpperCase() ?? 'GET';
+      const url = response.config.url ?? '';
+      console.log(
+        `%c[API] ${method} ${url}`,
+        'color: #6366f1; font-weight: bold',
+        `→ ${ms}ms | ${kb}KB`
+      );
+    }
     return response;
   },
   (error) => {
@@ -49,20 +65,33 @@ api.interceptors.response.use(
   }
 );
 
+// ─── Types ──────────────────────────────────────────────────────────────────────────────────
+
+export interface AlocacaoLight {
+  eventoId: number;
+  eventoNome: string;
+  eventoData: string;
+  eventoHoraInicio: string;
+  colaboradorId: number;
+  colaboradorNome: string;
+}
+
+// ─── Services ───────────────────────────────────────────────────────────────────────────────
+
 export const colaboradorService = {
   listar: () => api.get<Colaborador[]>('/colaboradores').then(res => res.data),
   buscarPorId: (id: number) => api.get<Colaborador>(`/colaboradores/${id}`).then(res => res.data),
   criar: (data: Colaborador) => api.post<Colaborador>('/colaboradores', data).then(res => res.data),
   atualizar: (id: number, data: Colaborador) => api.put<Colaborador>(`/colaboradores/${id}`, data).then(res => res.data),
   deletar: (id: number) => api.delete<void>(`/colaboradores/${id}`).then(res => res.data),
-  obterDisponibilidade: (id: number, mes: number, ano: number) => 
+  obterDisponibilidade: (id: number, mes: number, ano: number) =>
     api.get<Disponibilidade[]>(`/colaboradores/${id}/disponibilidade`, { params: { mes, ano } }).then(res => res.data),
-  salvarDisponibilidade: (id: number, data: Disponibilidade[]) => 
+  salvarDisponibilidade: (id: number, data: Disponibilidade[]) =>
     api.post<void>(`/colaboradores/${id}/disponibilidade`, data).then(res => res.data),
 };
 
 export const eventoService = {
-  listar: (params?: { mes?: number; ano?: number; inicio?: string; fim?: string }) => 
+  listar: (params?: { mes?: number; ano?: number; inicio?: string; fim?: string }) =>
     api.get<Evento[]>('/eventos', { params }).then(res => res.data),
   buscarPorId: (id: number) => api.get<Evento>(`/eventos/${id}`).then(res => res.data),
   criar: (data: Evento) => api.post<Evento>('/eventos', data).then(res => res.data),
@@ -81,6 +110,15 @@ export const escalaService = {
     colaboradorIds?: number[];
     eventos: Evento[];
   }) => api.post<RelatorioGeracao>('/escalas/gerar', payload).then(res => res.data),
+};
+
+/**
+ * G4: Serviço leve de alocações — substitui escalaService.listar() em
+ * DisponibilidadeColaborador.tsx. Payload: ~1-5KB vs 80-200KB.
+ */
+export const alocacaoService = {
+  listarPorPeriodo: (mes: number, ano: number) =>
+    api.get<AlocacaoLight[]>('/alocacoes', { params: { mes, ano } }).then(res => res.data),
 };
 
 export default api;

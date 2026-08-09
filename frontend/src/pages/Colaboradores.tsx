@@ -225,38 +225,43 @@ const Colaboradores: React.FC<ColaboradoresProps> = ({ onSelectColaboradorForDis
     try {
       setSaving(true);
 
-      for (const colabId of selectedIds) {
-        const colabObj = colaboradores.find(c => c.id === colabId)!;
+      if (bulkTab === 'relacionamentos') {
+        // G5: todos os PUTs de relacionamento em paralelo
+        await Promise.all(
+          selectedIds.map(colabId => {
+            const colabObj = colaboradores.find(c => c.id === colabId)!;
+            const cleanNtc = bulkNaoTrabalharCom.filter(id => id !== colabId);
+            const cleanPtc = bulkPreferenciaTrabalharCom.filter(id => id !== colabId);
+            return colaboradorService.atualizar(colabId, {
+              ...colabObj,
+              naoTrabalharCom: cleanNtc,
+              preferenciaTrabalharCom: cleanPtc
+            });
+          })
+        );
+      }
 
-        // 1. Relacionamentos
-        if (bulkTab === 'relacionamentos') {
-          // Filtrar o próprio ID para evitar autoreferência
-          const cleanNtc = bulkNaoTrabalharCom.filter(id => id !== colabId);
-          const cleanPtc = bulkPreferenciaTrabalharCom.filter(id => id !== colabId);
+      if (bulkTab === 'disponibilidade') {
+        // G5: Round 1 — todos os GETs de disponibilidade em paralelo
+        const dispsAtuais = await Promise.all(
+          selectedIds.map(colabId =>
+            colaboradorService.obterDisponibilidade(colabId, bulkMes, bulkAno)
+              .then(disps => ({ colabId, disps }))
+          )
+        );
 
-          await colaboradorService.atualizar(colabId, {
-            ...colabObj,
-            naoTrabalharCom: cleanNtc,
-            preferenciaTrabalharCom: cleanPtc
-          });
-        }
-
-        // 2. Disponibilidade
-        if (bulkTab === 'disponibilidade') {
-          const currentDisps = await colaboradorService.obterDisponibilidade(colabId, bulkMes, bulkAno);
-          
-          const updatedDisps = currentDisps.map(disp => {
-            const status = bulkIndisponibilidades[disp.eventoId];
-            if (status === 'indisponivel') {
-              return { ...disp, indisponivel: true };
-            } else if (status === 'disponivel') {
-              return { ...disp, indisponivel: false };
-            }
-            return disp;
-          });
-
-          await colaboradorService.salvarDisponibilidade(colabId, updatedDisps);
-        }
+        // Round 2 — todos os POSTs de salvamento em paralelo
+        await Promise.all(
+          dispsAtuais.map(({ colabId, disps }) => {
+            const updatedDisps = disps.map(disp => {
+              const status = bulkIndisponibilidades[disp.eventoId];
+              if (status === 'indisponivel') return { ...disp, indisponivel: true };
+              if (status === 'disponivel') return { ...disp, indisponivel: false };
+              return disp;
+            });
+            return colaboradorService.salvarDisponibilidade(colabId, updatedDisps);
+          })
+        );
       }
 
       toast.success('Colaboradores atualizados em lote com sucesso! 🎉✅', { id: loadingToast });
@@ -270,6 +275,7 @@ const Colaboradores: React.FC<ColaboradoresProps> = ({ onSelectColaboradorForDis
       setSaving(false);
     }
   };
+
 
   // Baixar modelo de planilha
   const handleBaixarModelo = async () => {
