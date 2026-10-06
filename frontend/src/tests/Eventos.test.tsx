@@ -32,7 +32,7 @@ describe('Eventos Component', () => {
     });
 
     // Clicar em Novo Evento
-    const btnNovo = screen.getByText('Cadastrar Primeiro');
+    const btnNovo = screen.getAllByText('Novo Evento')[0];
     fireEvent.click(btnNovo);
 
     // Verificar que o checkbox de múltiplos horários existe
@@ -59,8 +59,8 @@ describe('Eventos Component', () => {
     (eventoService.listar as any).mockResolvedValue([]);
     render(<Eventos />);
 
-    const btnNovo = await screen.findByText('Cadastrar Primeiro');
-    fireEvent.click(btnNovo);
+    const btnNovo = await screen.findAllByText('Novo Evento');
+    fireEvent.click(btnNovo[0]);
 
     // Obter o input de vagas (que tem o valor inicial '1')
     const inputs = screen.getAllByRole('spinbutton');
@@ -75,9 +75,13 @@ describe('Eventos Component', () => {
   });
 
   it('deve ordenar eventos cronologicamente e filtrar por nome', async () => {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+
     (eventoService.listar as any).mockResolvedValue([
-      { id: 2, nome: 'Missa Tarde', data: '2026-07-20', horaInicio: '18:00:00', vagasNecessarias: 3 },
-      { id: 1, nome: 'Missa Manhã', data: '2026-07-15', horaInicio: '09:00:00', vagasNecessarias: 2 }
+      { id: 2, nome: 'Missa Tarde', data: `${ano}-${mes}-20`, horaInicio: '18:00:00', vagasNecessarias: 3 },
+      { id: 1, nome: 'Missa Manhã', data: `${ano}-${mes}-15`, horaInicio: '09:00:00', vagasNecessarias: 2 }
     ]);
 
     render(<Eventos />);
@@ -100,8 +104,12 @@ describe('Eventos Component', () => {
   });
 
   it('deve abrir o modal de duplicacao ao clicar no botao copiar', async () => {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+
     (eventoService.listar as any).mockResolvedValue([
-      { id: 1, nome: 'Missa de Domingo', data: '2026-07-12', horaInicio: '10:00:00', vagasNecessarias: 2 }
+      { id: 1, nome: 'Missa de Domingo', data: `${ano}-${mes}-12`, horaInicio: '10:00:00', vagasNecessarias: 2 }
     ]);
 
     render(<Eventos />);

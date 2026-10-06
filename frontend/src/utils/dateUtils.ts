@@ -44,3 +44,20 @@ export const obterDatasMesAtual = () => {
     nomeEscala: `Escala ${nomeMes}/${ano}`
   };
 };
+
+export const getEventsByMonth = <T extends { data: string }>(
+  events: T[],
+  month: number,
+  year: number
+): T[] => {
+  if (!events || !Array.isArray(events)) return [];
+  return events.filter(e => {
+    if (!e || !e.data) return false;
+    const parts = e.data.split('-');
+    if (parts.length < 3) return false;
+    const eYear = parseInt(parts[0], 10);
+    const eMonth = parseInt(parts[1], 10);
+    return eYear === year && eMonth === month;
+  });
+};
+

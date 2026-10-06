@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { eventoService } from '../services/api';
 import type { Evento } from '../types';
-import { formatarDataComDiaSemana } from '../utils/dateUtils';
+import { formatarDataComDiaSemana, getEventsByMonth } from '../utils/dateUtils';
 import { 
   Plus, 
   Trash2, 
@@ -394,10 +394,15 @@ const Eventos: React.FC = () => {
     }
   };
 
-  // Filtragem e Ordenação Combinada de Eventos (Memoizados)
+  // 1. Filtrar eventos do mês/ano visualizado (com parse timezone-safe)
+  const eventosDoMes = useMemo(() => {
+    return getEventsByMonth(eventos, currentMonth, currentYear);
+  }, [eventos, currentMonth, currentYear]);
+
+  // 2. Aplicar os filtros combinados sobre o mês selecionado e ordenar cronologicamente
   const eventosOrdenados = useMemo(() => {
     const nomeTermo = filtroNome.toLowerCase();
-    const filtrados = eventos.filter(e => {
+    const filtrados = eventosDoMes.filter(e => {
       if (filtroNome && !e.nome.toLowerCase().includes(nomeTermo)) return false;
       if (filtroVagas && e.vagasNecessarias !== Number(filtroVagas)) return false;
       if (filtroCor && e.corLiturgica !== filtroCor) return false;
@@ -410,12 +415,12 @@ const Eventos: React.FC = () => {
       if (dateDiff !== 0) return dateDiff;
       return a.horaInicio.localeCompare(b.horaInicio);
     });
-  }, [eventos, filtroNome, filtroVagas, filtroCor, filtroHora]);
+  }, [eventosDoMes, filtroNome, filtroVagas, filtroCor, filtroHora]);
 
-  // Obter horários únicos para o filtro (Memoizados)
+  // Obter horários únicos para o filtro (Memoizados por mês)
   const horáriosUnicos = useMemo(() => {
-    return [...new Set(eventos.map(e => e.horaInicio.slice(0, 5)))].sort();
-  }, [eventos]);
+    return [...new Set(eventosDoMes.map(e => e.horaInicio.slice(0, 5)))].sort();
+  }, [eventosDoMes]);
 
   // Calendário Utils
   const diasNoMes = new Date(currentYear, currentMonth, 0).getDate();
@@ -439,6 +444,12 @@ const Eventos: React.FC = () => {
       }
       return prev + 1;
     });
+  };
+
+  const handleHoje = () => {
+    const hoje = new Date();
+    setCurrentMonth(hoje.getMonth() + 1);
+    setCurrentYear(hoje.getFullYear());
   };
 
   return (
@@ -767,110 +778,140 @@ const Eventos: React.FC = () => {
         </div>
       )}
 
+      {/* Seletor de Mês Compartilhado (Sincronizado entre Lista e Calendário) */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <Calendar className="text-indigo-600 w-5 h-5" />
+            <span>{meses[currentMonth - 1]} de {currentYear}</span>
+          </h2>
+          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+            {eventosOrdenados.length} {eventosOrdenados.length === 1 ? 'evento' : 'eventos'}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handlePrevMonth}
+            className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 cursor-pointer transition active:scale-95 flex items-center justify-center"
+            title="Mês anterior"
+          >
+            <ChevronLeft size={18} />
+          </button>
+
+          <button
+            onClick={handleHoje}
+            className="px-3.5 py-1 text-xs font-bold border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-700 cursor-pointer transition active:scale-95"
+            title="Ir para o mês atual"
+          >
+            Hoje
+          </button>
+
+          <button
+            onClick={handleNextMonth}
+            className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 cursor-pointer transition active:scale-95 flex items-center justify-center"
+            title="Próximo mês"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      </div>
+
       {/* Grid de Eventos / Modo Lista */}
       {loading ? (
         <div className="flex justify-center items-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
         </div>
-      ) : eventosOrdenados.length === 0 ? (
-        <div className="bg-white p-12 rounded-2xl border border-slate-100 text-center space-y-4">
-          <div className="bg-indigo-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto text-indigo-500">
-            <Calendar size={24} />
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-base font-semibold text-slate-700">Nenhum evento encontrado</h3>
-            <p className="text-slate-400 text-sm max-w-sm mx-auto">
-              {eventos.length > 0 
-                ? 'Nenhum evento corresponde aos filtros selecionados.' 
-                : 'Cadastre as demandas de plantões necessárias para gerar as escalas.'}
-            </p>
-          </div>
-          {eventos.length === 0 && (
-            <button
-              onClick={abrirCadastro}
-              className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl text-sm transition cursor-pointer"
-            >
-              Cadastrar Primeiro
-            </button>
-          )}
-        </div>
       ) : viewMode === 'lista' ? (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {eventosOrdenados.map(e => (
-            <div key={e.id} className="bg-white rounded-2xl border border-slate-100 p-5 shadow-xs hover:shadow-md hover:border-indigo-100 transition duration-200 flex flex-col justify-between space-y-4">
-              <div className="space-y-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-bold text-slate-800 text-base">{e.nome}</h3>
-                    {e.corLiturgica && (
-                      <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border mt-1.5 ${getCorBadgeStyle(e.corLiturgica)}`}>
-                        <Paintbrush size={10} className="mr-1" /> {e.corLiturgica}
-                      </span>
-                    )}
+        eventosOrdenados.length === 0 ? (
+          <div className="bg-white p-12 rounded-2xl border border-slate-100 text-center space-y-4 shadow-xs">
+            <div className="bg-indigo-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto text-indigo-500">
+              <Calendar size={24} />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base font-semibold text-slate-700">
+                Nenhum evento em {meses[currentMonth - 1]} de {currentYear}
+              </h3>
+              <p className="text-slate-400 text-sm max-w-sm mx-auto">
+                {(filtroNome || filtroVagas || filtroCor || filtroHora)
+                  ? 'Nenhum evento corresponde aos filtros selecionados para este mês.'
+                  : 'Cadastre as demandas de plantões necessárias para este mês.'}
+              </p>
+            </div>
+            <div className="flex justify-center gap-3 pt-2">
+              {(filtroNome || filtroVagas || filtroCor || filtroHora) && (
+                <button
+                  onClick={resetarFiltros}
+                  className="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-xl text-sm transition cursor-pointer"
+                >
+                  <RotateCcw size={14} /> Limpar Filtros
+                </button>
+              )}
+              <button
+                onClick={abrirCadastro}
+                className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl text-sm transition cursor-pointer active:scale-95 shadow-xs"
+              >
+                <Plus size={16} /> Novo Evento
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {eventosOrdenados.map(e => (
+              <div key={e.id} className="bg-white rounded-2xl border border-slate-100 p-5 shadow-xs hover:shadow-md hover:border-indigo-100 transition duration-200 flex flex-col justify-between space-y-4">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-bold text-slate-800 text-base">{e.nome}</h3>
+                      {e.corLiturgica && (
+                        <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border mt-1.5 ${getCorBadgeStyle(e.corLiturgica)}`}>
+                          <Paintbrush size={10} className="mr-1" /> {e.corLiturgica}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 text-xs text-slate-500 font-medium">
+                    <p className="flex items-center gap-2">
+                      <Calendar size={14} className="text-slate-450" /> {formatarDataComDiaSemana(e.data)}
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <Clock size={14} className="text-slate-450" /> Início: {e.horaInicio.slice(0, 5)}
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <Users size={14} className="text-slate-450" /> Vagas: {e.vagasNecessarias}
+                    </p>
                   </div>
                 </div>
 
-                <div className="space-y-1.5 text-xs text-slate-500 font-medium">
-                  <p className="flex items-center gap-2">
-                    <Calendar size={14} className="text-slate-450" /> {formatarDataComDiaSemana(e.data)}
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <Clock size={14} className="text-slate-450" /> Início: {e.horaInicio.slice(0, 5)}
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <Users size={14} className="text-slate-450" /> Vagas: {e.vagasNecessarias}
-                  </p>
+                <div className="flex justify-end gap-2 pt-3 border-t border-slate-50">
+                  <button
+                    onClick={() => handleAbrirDuplicacao(e)}
+                    className="bg-slate-50 hover:bg-amber-50 hover:text-amber-700 text-slate-650 text-xs font-semibold py-1.5 px-2 rounded-lg transition cursor-pointer flex items-center gap-1 active:scale-95 transition-all"
+                    title="Duplicar Evento"
+                  >
+                    <Copy size={13} />
+                  </button>
+                  <button
+                    onClick={() => abrirEdicao(e)}
+                    className="bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 text-slate-650 text-xs font-semibold py-1.5 px-3 rounded-lg transition cursor-pointer active:scale-95 transition-all"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => handleDeletar(e.id!)}
+                    className="bg-slate-50 hover:bg-rose-50 hover:text-rose-600 text-slate-450 text-xs font-semibold p-1.5 rounded-lg transition cursor-pointer active:scale-95 transition-all"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-50">
-                <button
-                  onClick={() => handleAbrirDuplicacao(e)}
-                  className="bg-slate-50 hover:bg-amber-50 hover:text-amber-700 text-slate-650 text-xs font-semibold py-1.5 px-2 rounded-lg transition cursor-pointer flex items-center gap-1 active:scale-95 transition-all"
-                  title="Duplicar Evento"
-                >
-                  <Copy size={13} />
-                </button>
-                <button
-                  onClick={() => abrirEdicao(e)}
-                  className="bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 text-slate-650 text-xs font-semibold py-1.5 px-3 rounded-lg transition cursor-pointer active:scale-95 transition-all"
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={() => handleDeletar(e.id!)}
-                  className="bg-slate-50 hover:bg-rose-50 hover:text-rose-600 text-slate-450 text-xs font-semibold p-1.5 rounded-lg transition cursor-pointer active:scale-95 transition-all"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )
       ) : (
         /* Visualização em Formato Calendário */
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-6">
-          {/* Navegação do Calendário */}
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-800">
-              {meses[currentMonth - 1]} de {currentYear}
-            </h2>
-            <div className="flex gap-2">
-              <button
-                onClick={handlePrevMonth}
-                className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 cursor-pointer"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <button
-                onClick={handleNextMonth}
-                className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 cursor-pointer"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
-
           {/* Grid do Calendário */}
           <div className="grid grid-cols-7 gap-2">
             {/* Cabeçalho dias da semana */}

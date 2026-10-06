@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import DisponibilidadeColaborador from '../pages/DisponibilidadeColaborador';
-import { colaboradorService, escalaService } from '../services/api';
+import { colaboradorService, escalaService, alocacaoService } from '../services/api';
 import toast from 'react-hot-toast';
 
 vi.mock('../services/api', () => ({
@@ -15,6 +15,9 @@ vi.mock('../services/api', () => ({
   escalaService: {
     listar: vi.fn(() => Promise.resolve([])),
     buscarPorId: vi.fn(() => Promise.resolve({})),
+  },
+  alocacaoService: {
+    listarPorPeriodo: vi.fn(() => Promise.resolve([])),
   }
 }));
 
@@ -99,6 +102,9 @@ describe('DisponibilidadeColaborador Component', () => {
   });
 
   it('deve alternar para visualizacao de calendario e selecionar um dia com eventos', async () => {
+    (alocacaoService.listarPorPeriodo as any).mockResolvedValue([
+      { id: 99, eventoId: 10, colaboradorId: 2, colaboradorNome: 'Maria Souza' }
+    ]);
     (escalaService.listar as any).mockResolvedValue([
       {
         id: 5,
