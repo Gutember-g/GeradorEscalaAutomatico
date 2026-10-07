@@ -598,6 +598,22 @@ const Colaboradores: React.FC<ColaboradoresProps> = ({ onSelectColaboradorForDis
         <div className="flex justify-center items-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
         </div>
+      ) : error ? (
+        <div className="bg-white p-12 rounded-2xl border border-rose-100 text-center space-y-4 shadow-xs">
+          <div className="bg-rose-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto text-rose-500">
+            <ShieldAlert size={24} />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-semibold text-slate-700">Erro ao carregar colaboradores</h3>
+            <p className="text-slate-400 text-sm max-w-sm mx-auto">{error}</p>
+          </div>
+          <button
+            onClick={carregarColaboradores}
+            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl text-sm transition cursor-pointer active:scale-95 shadow-xs"
+          >
+            Tentar Novamente
+          </button>
+        </div>
       ) : colaboradoresOrdenados.length === 0 ? (
         <div className="bg-white p-12 rounded-2xl border border-slate-100 text-center space-y-4">
           <div className="bg-indigo-55 w-12 h-12 rounded-full flex items-center justify-center mx-auto text-indigo-550">

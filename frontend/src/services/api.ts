@@ -34,7 +34,7 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptor de resposta para interceptar expiração de sessão (401/403) + log de performance
+// Interceptor de resposta para interceptar expiração de sessão (401) + log de performance
 api.interceptors.response.use(
   (response) => {
     // Log de performance (remover após coleta dos números)
@@ -54,13 +54,27 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+    const status = error.response?.status;
+    const method = error.config?.method?.toUpperCase() ?? 'REQ';
+    const url = error.config?.url ?? '';
+
+    // SÓ deslogar e redirecionar para o login em 401 (Sessão realmente expirada / inválida)
+    if (status === 401) {
+      console.error(`Logout automático: ${method} ${url} retornou 401 (Sessão expirada ou token inválido)`);
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('user');
+      delete api.defaults.headers.common['Authorization'];
       if (window.location.pathname !== '/login' && window.location.pathname !== '/cadastro') {
         window.location.href = '/login';
       }
+    } else if (status === 403) {
+      console.error(`Acesso negado sem deslogar: ${method} ${url} retornou 403 (Sem permissão para este recurso)`);
+    } else if (status) {
+      console.error(`Erro de API (${status}): ${method} ${url}`, error.response?.data);
+    } else {
+      console.error(`Erro de rede/conexão: ${method} ${url}`, error.message);
     }
+
     return Promise.reject(error);
   }
 );

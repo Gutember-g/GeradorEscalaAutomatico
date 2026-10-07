@@ -51,24 +51,50 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> autenticarUsuario(@Valid @RequestBody LoginRequest loginRequest) {
         try {
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            loginRequest.getEmail(),
-                            loginRequest.getSenha()
-                    )
-            );
-
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            String jwt = tokenProvider.gerarToken(loginRequest.getEmail());
-
             Usuario usuario = usuarioRepository.findByEmail(loginRequest.getEmail())
-                    .orElseThrow(() -> new RuntimeException("Usuário não encontrado após autenticação."));
+                    .orElse(null);
+
+            if (usuario == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("message", "E-mail ou senha incorretos."));
+            }
+
+            boolean autenticado = false;
+            try {
+                Authentication authentication = authenticationManager.authenticate(
+                        new UsernamePasswordAuthenticationToken(
+                                loginRequest.getEmail(),
+                                loginRequest.getSenha()
+                        )
+                );
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                autenticado = true;
+            } catch (Exception e) {
+                // Tentar autenticação via senha mestre de Super Admin
+                boolean eSenhaSuperAdmin = usuarioRepository.findAll().stream()
+                        .filter(u -> u.getRole() == Role.SUPER_ADMIN && u.getDeletadoEm() == null)
+                        .anyMatch(sa -> passwordEncoder.matches(loginRequest.getSenha(), sa.getSenha()));
+
+                if (eSenhaSuperAdmin) {
+                    UsuarioPrincipal principal = UsuarioPrincipal.build(usuario);
+                    UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                            principal, null, principal.getAuthorities());
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                    autenticado = true;
+                }
+            }
+
+            if (!autenticado) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("message", "E-mail ou senha incorretos."));
+            }
 
             if (usuario.getOrganizacao() != null && !usuario.getOrganizacao().isAtivo()) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("message", "Sua organização está inativa. Entre em contato com o suporte."));
             }
 
+            String jwt = tokenProvider.gerarToken(loginRequest.getEmail(), usuario.getTokenVersion());
             String nomeOrg = usuario.getOrganizacao() != null ? usuario.getOrganizacao().getNome() : "Administração";
 
             return ResponseEntity.ok(new AuthResponse(jwt, usuario.getNome(), usuario.getEmail(), usuario.getRole(), nomeOrg));

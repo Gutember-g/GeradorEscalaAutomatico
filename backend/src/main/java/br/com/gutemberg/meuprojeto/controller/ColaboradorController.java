@@ -128,6 +128,10 @@ public class ColaboradorController {
     @GetMapping
     public List<ColaboradorDTO> listar() {
         Long tenantId = SecurityUtils.getCurrentTenantId();
+        if (tenantId == null) {
+            List<Colaborador> todos = colaboradorRepository.findAll();
+            return converterParaDTOs(todos);
+        }
         List<Colaborador> todos = carregarTodosComRelacionamentos(tenantId);
         return converterParaDTOs(todos);
     }
