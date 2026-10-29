@@ -3,6 +3,7 @@ import { colaboradorService, alocacaoService } from '../services/api';
 import type { AlocacaoLight } from '../services/api';
 import type { Colaborador, Disponibilidade } from '../types';
 import { formatarDataComDiaSemana } from '../utils/dateUtils';
+import ModalIndisponibilidadeLote from '../components/ModalIndisponibilidadeLote';
 import { 
   Calendar as CalendarIcon, 
   Save, 
@@ -15,7 +16,9 @@ import {
   List,
   Users,
   CheckCircle,
-  XCircle
+  XCircle,
+  FileSpreadsheet,
+  Keyboard
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -44,6 +47,10 @@ const DisponibilidadeColaborador: React.FC<DisponibilidadeColaboradorProps> = ({
   // View Mode & selected calendar day
   const [viewMode, setViewMode] = useState<'lista' | 'calendario'>('calendario');
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+
+  // Modal de Indisponibilidades em Lote
+  const [modalLoteAberto, setModalLoteAberto] = useState<boolean>(false);
+  const [modalLoteAba, setModalLoteAba] = useState<'planilha' | 'digitar'>('planilha');
 
   const meses = [
     { valor: 1, nome: 'Janeiro' },
@@ -130,6 +137,19 @@ const DisponibilidadeColaborador: React.FC<DisponibilidadeColaboradorProps> = ({
   const handleToggleIndisponivel = (eventoId: number) => {
     setDisponibilidades(prev =>
       prev.map(d => (d.eventoId === eventoId ? { ...d, indisponivel: !d.indisponivel } : d))
+    );
+  };
+
+  const handleAplicarLote = (eventoIdsAfetados: number[], modo: 'adicionar' | 'substituir') => {
+    const idsSet = new Set(eventoIdsAfetados);
+    setDisponibilidades(prev =>
+      prev.map(d => {
+        if (modo === 'substituir') {
+          return { ...d, indisponivel: idsSet.has(d.eventoId) };
+        } else {
+          return idsSet.has(d.eventoId) ? { ...d, indisponivel: true } : d;
+        }
+      })
     );
   };
 
@@ -357,6 +377,42 @@ const DisponibilidadeColaborador: React.FC<DisponibilidadeColaboradorProps> = ({
           </div>
         )}
       </div>
+
+      {/* Barra de Ações Rápidas de Indisponibilidade em Lote */}
+      {!loading && disponibilidades.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+              Marcação de Indisponibilidade em Lote
+            </span>
+            <p className="text-slate-400 text-xs mt-0.5">
+              Importe uma planilha (.xlsx / .csv) ou digite várias datas e intervalos de uma só vez.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setModalLoteAba('planilha');
+                setModalLoteAberto(true);
+              }}
+              className="inline-flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold px-3 py-2 rounded-xl text-xs transition border border-indigo-200/60 shadow-xs cursor-pointer"
+            >
+              <FileSpreadsheet size={15} /> Importar Planilha
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setModalLoteAba('digitar');
+                setModalLoteAberto(true);
+              }}
+              className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white font-semibold px-3 py-2 rounded-xl text-xs transition shadow-xs cursor-pointer"
+            >
+              <Keyboard size={15} /> Digitar Datas em Lote
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Lista de Eventos / Painel de Marcação */}
       {loading ? (
@@ -611,6 +667,18 @@ const DisponibilidadeColaborador: React.FC<DisponibilidadeColaboradorProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal de Marcação de Indisponibilidade em Lote */}
+      <ModalIndisponibilidadeLote
+        isOpen={modalLoteAberto}
+        onClose={() => setModalLoteAberto(false)}
+        disponibilidades={disponibilidades}
+        ano={ano}
+        mes={mes}
+        colaboradorNome={colaborador.nome}
+        abaInicial={modalLoteAba}
+        onAplicar={handleAplicarLote}
+      />
     </div>
   );
 };

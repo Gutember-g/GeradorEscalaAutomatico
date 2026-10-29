@@ -136,4 +136,73 @@ describe('DisponibilidadeColaborador Component', () => {
     const mariaElements = await screen.findAllByText('Maria Souza');
     expect(mariaElements.length).toBe(3);
   });
+
+  it('deve abrir o modal de lote, digitar data com horario, exibir previa e aplicar alteracoes', async () => {
+    (colaboradorService.obterDisponibilidade as any).mockResolvedValue([
+      { eventoId: 10, nomeEvento: 'Missa das 10h', data: `${currentYear}-${monthStr}-10`, horaInicio: '10:00:00', indisponivel: false },
+      { eventoId: 20, nomeEvento: 'Missa das 18h', data: `${currentYear}-${monthStr}-10`, horaInicio: '18:00:00', indisponivel: false }
+    ]);
+
+    render(<DisponibilidadeColaborador colaborador={mockColaborador} onVoltar={mockOnVoltar} />);
+
+    // Mudar para o modo lista
+    const btnLista = await screen.findByRole('button', { name: /Lista/i });
+    fireEvent.click(btnLista);
+
+    // Clicar no botão de digitar em lote
+    const btnDigitarLote = await screen.findByRole('button', { name: /Digitar Datas em Lote/i });
+    fireEvent.click(btnDigitarLote);
+
+    // Modal deve estar aberto
+    expect(screen.getByText('Definir Indisponibilidades em Lote')).toBeInTheDocument();
+
+    // Digitar apenas o horário das 10h para o dia 10
+    const textarea = screen.getByTestId('textarea-datas-lote');
+    fireEvent.change(textarea, { target: { value: `10/${monthStr} 10:00` } });
+
+    // Clicar em Verificar e Gerar Prévia
+    const btnPrevia = screen.getByRole('button', { name: /Verificar e Gerar Prévia/i });
+    fireEvent.click(btnPrevia);
+
+    // Na prévia, deve listar Eventos Encontrados e a Missa das 10h
+    expect(await screen.findByText('Eventos Encontrados')).toBeInTheDocument();
+    expect(screen.getByText('1')).toBeInTheDocument(); // total eventos encontrados
+
+    // Clicar em Confirmar e Aplicar
+    const btnAplicar = screen.getByRole('button', { name: /Confirmar e Aplicar/i });
+    fireEvent.click(btnAplicar);
+
+    // O modal fecha e o evento 10 agora deve estar Indisponível
+    await waitFor(() => {
+      expect(screen.queryByText('Definir Indisponibilidades em Lote')).not.toBeInTheDocument();
+    });
+
+    // Salvar deve enviar o evento 10 como indisponivel = true e o 20 como indisponivel = false
+    const btnSalvar = screen.getByRole('button', { name: /Salvar Alterações/i });
+    fireEvent.click(btnSalvar);
+
+    await waitFor(() => {
+      expect(colaboradorService.salvarDisponibilidade).toHaveBeenCalledWith(
+        1,
+        expect.arrayContaining([
+          expect.objectContaining({ eventoId: 10, indisponivel: true }),
+          expect.objectContaining({ eventoId: 20, indisponivel: false })
+        ])
+      );
+    });
+  });
+
+  it('deve permitir cancelar o modal de lote sem alterar as indisponibilidades', async () => {
+    render(<DisponibilidadeColaborador colaborador={mockColaborador} onVoltar={mockOnVoltar} />);
+
+    const btnDigitarLote = await screen.findByRole('button', { name: /Digitar Datas em Lote/i });
+    fireEvent.click(btnDigitarLote);
+
+    const btnCancelar = screen.getByTestId('modal-lote-cancelar');
+    fireEvent.click(btnCancelar);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Definir Indisponibilidades em Lote')).not.toBeInTheDocument();
+    });
+  });
 });

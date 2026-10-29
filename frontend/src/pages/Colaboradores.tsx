@@ -16,9 +16,11 @@ import {
   ShieldAlert,
   Heart,
   Edit2,
-  Check
+  Check,
+  FileSpreadsheet
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ModalImportarIndisponibilidadesMultiplos from '../components/ModalImportarIndisponibilidadesMultiplos';
 
 interface ColaboradoresProps {
   onSelectColaboradorForDisponibilidade: (c: Colaborador) => void;
@@ -66,6 +68,9 @@ const Colaboradores: React.FC<ColaboradoresProps> = ({ onSelectColaboradorForDis
     duplicados: number;
     erros: number;
   } | null>(null);
+
+  // Modal de importação de indisponibilidades múltiplos colaboradores
+  const [modalImportarMultiplosAberto, setModalImportarMultiplosAberto] = useState(false);
 
   const formRef = useRef<HTMLDivElement>(null);
   const meses = [
@@ -433,6 +438,14 @@ const Colaboradores: React.FC<ColaboradoresProps> = ({ onSelectColaboradorForDis
               className="hidden"
               id="import-file-input"
             />
+            <button
+              type="button"
+              onClick={() => setModalImportarMultiplosAberto(true)}
+              className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold py-2.5 px-4 rounded-xl transition duration-200 shadow-xs border border-indigo-200/60 text-xs cursor-pointer active:scale-95"
+              title="Importar datas indisponíveis de múltiplos colaboradores via planilha (.xlsx / .csv)"
+            >
+              <FileSpreadsheet size={14} /> Importar Indisponibilidades
+            </button>
             <button
               onClick={abrirCadastro}
               className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-xl transition duration-200 shadow-xs text-xs cursor-pointer active:scale-95"
@@ -1030,6 +1043,16 @@ const Colaboradores: React.FC<ColaboradoresProps> = ({ onSelectColaboradorForDis
           </div>
         </div>
       )}
+
+      {/* Modal de Importação de Indisponibilidades para Múltiplos Colaboradores */}
+      <ModalImportarIndisponibilidadesMultiplos
+        isOpen={modalImportarMultiplosAberto}
+        onClose={() => setModalImportarMultiplosAberto(false)}
+        colaboradores={colaboradores}
+        onSucesso={() => {
+          // Recarregar se necessário
+        }}
+      />
     </div>
   );
 };
