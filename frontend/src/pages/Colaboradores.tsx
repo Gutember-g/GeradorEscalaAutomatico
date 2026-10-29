@@ -880,9 +880,14 @@ const Colaboradores: React.FC<ColaboradoresProps> = ({ onSelectColaboradorForDis
 
                   {/* Parcerias */}
                   <div className="space-y-2">
-                    <label className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 uppercase tracking-wider">
-                      <Heart size={14} /> Preferência para trabalhar com (Parcerias)
-                    </label>
+                    <div>
+                      <label className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 uppercase tracking-wider">
+                        <Heart size={14} /> Preferência para trabalhar com (Parcerias Obrigatórias)
+                      </label>
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        Quando ambos estiverem disponíveis no mesmo evento, serão escalados obrigatoriamente juntos.
+                      </p>
+                    </div>
                     <div className="max-h-40 overflow-y-auto border border-emerald-100/50 rounded-xl p-3 bg-emerald-50/10 space-y-1.5 pr-1">
                       {colaboradores
                         .filter(colab => !selectedIds.includes(colab.id!))

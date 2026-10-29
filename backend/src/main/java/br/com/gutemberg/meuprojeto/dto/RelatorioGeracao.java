@@ -10,6 +10,7 @@ public class RelatorioGeracao {
     private int vagasPreenchidas;
     private int vagasRestantes;
     private List<StatusEvento> statusEventos = new ArrayList<>();
+    private List<String> avisos = new ArrayList<>();
 
     public RelatorioGeracao() {
     }
@@ -21,6 +22,17 @@ public class RelatorioGeracao {
         this.vagasPreenchidas = vagasPreenchidas;
         this.vagasRestantes = vagasRestantes;
         this.statusEventos = statusEventos != null ? statusEventos : new ArrayList<>();
+        this.avisos = new ArrayList<>();
+    }
+
+    public RelatorioGeracao(Long escalaId, String nomeEscala, int totalVagas, int vagasPreenchidas, int vagasRestantes, List<StatusEvento> statusEventos, List<String> avisos) {
+        this.escalaId = escalaId;
+        this.nomeEscala = nomeEscala;
+        this.totalVagas = totalVagas;
+        this.vagasPreenchidas = vagasPreenchidas;
+        this.vagasRestantes = vagasRestantes;
+        this.statusEventos = statusEventos != null ? statusEventos : new ArrayList<>();
+        this.avisos = avisos != null ? avisos : new ArrayList<>();
     }
 
     public Long getEscalaId() {
@@ -71,6 +83,14 @@ public class RelatorioGeracao {
         this.statusEventos = statusEventos != null ? statusEventos : new ArrayList<>();
     }
 
+    public List<String> getAvisos() {
+        return avisos;
+    }
+
+    public void setAvisos(List<String> avisos) {
+        this.avisos = avisos != null ? avisos : new ArrayList<>();
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -82,6 +102,7 @@ public class RelatorioGeracao {
         private int vagasPreenchidas;
         private int vagasRestantes;
         private List<StatusEvento> statusEventos = new ArrayList<>();
+        private List<String> avisos = new ArrayList<>();
 
         public Builder escalaId(Long escalaId) {
             this.escalaId = escalaId;
@@ -113,8 +134,13 @@ public class RelatorioGeracao {
             return this;
         }
 
+        public Builder avisos(List<String> avisos) {
+            this.avisos = avisos;
+            return this;
+        }
+
         public RelatorioGeracao build() {
-            return new RelatorioGeracao(escalaId, nomeEscala, totalVagas, vagasPreenchidas, vagasRestantes, statusEventos);
+            return new RelatorioGeracao(escalaId, nomeEscala, totalVagas, vagasPreenchidas, vagasRestantes, statusEventos, avisos);
         }
     }
 }

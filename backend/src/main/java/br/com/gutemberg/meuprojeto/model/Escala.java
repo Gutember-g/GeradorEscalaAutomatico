@@ -5,7 +5,10 @@ import java.util.ArrayList;
 import java.util.List;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -42,6 +45,11 @@ public class Escala {
     @Fetch(FetchMode.SUBSELECT)
     private List<Alocacao> alocacoes = new ArrayList<>();
 
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "escala_avisos", joinColumns = @JoinColumn(name = "escala_id"))
+    @Column(name = "aviso", length = 1000)
+    private List<String> avisos = new ArrayList<>();
+
     @ManyToOne(optional = false)
     @JoinColumn(name = "organizacao_id", nullable = false)
     private Organizacao organizacao;
@@ -65,6 +73,17 @@ public class Escala {
         this.dataFim = dataFim;
         this.eventos = eventos != null ? eventos : new ArrayList<>();
         this.alocacoes = alocacoes != null ? alocacoes : new ArrayList<>();
+        this.organizacao = organizacao;
+    }
+
+    public Escala(Long id, String nome, LocalDate dataInicio, LocalDate dataFim, List<Evento> eventos, List<Alocacao> alocacoes, List<String> avisos, Organizacao organizacao) {
+        this.id = id;
+        this.nome = nome;
+        this.dataInicio = dataInicio;
+        this.dataFim = dataFim;
+        this.eventos = eventos != null ? eventos : new ArrayList<>();
+        this.alocacoes = alocacoes != null ? alocacoes : new ArrayList<>();
+        this.avisos = avisos != null ? avisos : new ArrayList<>();
         this.organizacao = organizacao;
     }
 
@@ -116,6 +135,14 @@ public class Escala {
         this.alocacoes = alocacoes != null ? alocacoes : new ArrayList<>();
     }
 
+    public List<String> getAvisos() {
+        return avisos;
+    }
+
+    public void setAvisos(List<String> avisos) {
+        this.avisos = avisos != null ? avisos : new ArrayList<>();
+    }
+
     public Organizacao getOrganizacao() {
         return organizacao;
     }
@@ -135,6 +162,7 @@ public class Escala {
         private LocalDate dataFim;
         private List<Evento> eventos = new ArrayList<>();
         private List<Alocacao> alocacoes = new ArrayList<>();
+        private List<String> avisos = new ArrayList<>();
         private Organizacao organizacao;
 
         public Builder id(Long id) {
@@ -167,13 +195,18 @@ public class Escala {
             return this;
         }
 
+        public Builder avisos(List<String> avisos) {
+            this.avisos = avisos;
+            return this;
+        }
+
         public Builder organizacao(Organizacao organizacao) {
             this.organizacao = organizacao;
             return this;
         }
 
         public Escala build() {
-            return new Escala(id, nome, dataInicio, dataFim, eventos, alocacoes, organizacao);
+            return new Escala(id, nome, dataInicio, dataFim, eventos, alocacoes, avisos, organizacao);
         }
     }
 }

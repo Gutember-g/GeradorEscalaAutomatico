@@ -386,6 +386,24 @@ const GeradorEscala: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Avisos de Parcerias e Conflitos */}
+                {relatorio.avisos && relatorio.avisos.length > 0 && (
+                  <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 space-y-2">
+                    <div className="flex items-center gap-2 text-amber-800 font-bold text-xs uppercase tracking-wider">
+                      <AlertTriangle size={16} className="text-amber-600 flex-shrink-0" />
+                      Avisos e Observações de Parcerias ({relatorio.avisos.length})
+                    </div>
+                    <ul className="space-y-1.5 text-xs text-amber-900">
+                      {relatorio.avisos.map((aviso, aIdx) => (
+                        <li key={aIdx} className="flex items-start gap-2 bg-amber-100/50 p-2 rounded-xl">
+                          <span className="text-amber-600 font-bold mt-0.5">•</span>
+                          <span>{aviso}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 {/* Lista de Alocações por Evento */}
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">

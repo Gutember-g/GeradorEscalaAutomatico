@@ -18,11 +18,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -42,6 +45,7 @@ public class EscalaService {
         this.alocacaoRepository = alocacaoRepository;
         this.disponibilidadeRepository = disponibilidadeRepository;
     }
+
     @Transactional
     public RelatorioGeracao gerarESalvarEscala(String nomeEscala, LocalDate dataInicio, LocalDate dataFim, List<Long> colaboradorIds, List<Evento> eventosAPreencher) {
         // Obter colaboradores
@@ -96,12 +100,18 @@ public class EscalaService {
         
         // Salvar as alocações geradas no banco
         alocacaoRepository.saveAll(escala.getAlocacoes());
+
+        // Salvar os avisos gerados na escala
+        escala.setAvisos(relatorio.getAvisos());
+        escalaRepository.save(escala);
         
         return relatorio;
     }
 
     public RelatorioGeracao gerarEscalaEmMemoria(Escala escala, List<Colaborador> colaboradores) {
-        List<Evento> eventos = escala.getEventos();
+        List<String> avisos = new ArrayList<>();
+        List<Evento> eventos = escala.getEventos() != null ? escala.getEventos() : Collections.emptyList();
+        
         // Ordenar os eventos por data e depois por hora de início
         List<Evento> eventosOrdenados = eventos.stream()
                 .sorted(Comparator.comparing(Evento::getData).thenComparing(Evento::getHoraInicio))
@@ -110,21 +120,30 @@ public class EscalaService {
         List<Alocacao> alocacoesGeradas = new ArrayList<>();
         List<StatusEvento> statusEventos = new ArrayList<>();
         
-        // Mapa para controlar a contagem de alocações de cada colaborador na escala atual para o balanceamento
+        // Mapa para busca rápida de colaboradores por ID
+        Map<Long, Colaborador> colabMap = new HashMap<>();
+        // Mapa para controlar a contagem de alocações de cada colaborador para o balanceamento
         Map<Colaborador, Integer> contagemAlocacoes = new HashMap<>();
         for (Colaborador c : colaboradores) {
+            colabMap.put(c.getId(), c);
             contagemAlocacoes.put(c, 0);
         }
 
+        // Construir grafo bidirecional de parcerias, aplicando a precedência de conflito ("Não trabalhar com")
+        Map<Long, Set<Long>> grafoParcerias = construirGrafoParcerias(colaboradores, colabMap, avisos);
+
         // Carregar indisponibilidades para estes eventos
         Long tenantId = escala.getOrganizacao() != null ? escala.getOrganizacao().getId() : null;
-        List<Disponibilidade> indisponibilidades = tenantId != null 
-                ? disponibilidadeRepository.findByOrganizacaoIdAndEventoIn(tenantId, eventos)
-                : disponibilidadeRepository.findByEventoIn(eventos);
+        List<Disponibilidade> indisponibilidades = Collections.emptyList();
+        if (disponibilidadeRepository != null && !eventos.isEmpty()) {
+            indisponibilidades = tenantId != null 
+                    ? disponibilidadeRepository.findByOrganizacaoIdAndEventoIn(tenantId, eventos)
+                    : disponibilidadeRepository.findByEventoIn(eventos);
+        }
         
         Map<Long, Set<Long>> mapIndisponiveis = new HashMap<>(); // colaboradorId -> Set of eventoIds
         for (Disponibilidade d : indisponibilidades) {
-            if (d.isIndisponivel()) {
+            if (d.isIndisponivel() && d.getColaborador() != null && d.getEvento() != null) {
                 mapIndisponiveis.computeIfAbsent(d.getColaborador().getId(), k -> new HashSet<>()).add(d.getEvento().getId());
             }
         }
@@ -137,80 +156,94 @@ public class EscalaService {
             totalVagas += vagasNecessarias;
             int preenchidasParaOEvento = 0;
             
-            // Colaboradores já alocados para ESTE evento específico (para evitar duplicatas no mesmo evento)
+            // Colaboradores já alocados para ESTE evento específico
             List<Colaborador> alocadosNoEvento = new ArrayList<>();
+            Set<String> parceriasNaoAtendidasNoEvento = new HashSet<>();
 
-            for (int i = 0; i < vagasNecessarias; i++) {
-                // Filtrar colaboradores elegíveis
-                List<Colaborador> elegiveis = new ArrayList<>();
+            while (preenchidasParaOEvento < vagasNecessarias) {
+                int vagasRestantes = vagasNecessarias - preenchidasParaOEvento;
+
+                // 1. Identificar IDs de colaboradores elegíveis no momento atual para este evento
+                Set<Long> idsElegiveis = new HashSet<>();
                 for (Colaborador c : colaboradores) {
-                    // 1. Já está alocado nesta vaga/evento?
                     if (alocadosNoEvento.contains(c)) {
                         continue;
                     }
-                    // 2. Está marcado como indisponível para este evento?
                     Set<Long> eventosIndisponiveis = mapIndisponiveis.get(c.getId());
                     if (eventosIndisponiveis != null && eventosIndisponiveis.contains(evento.getId())) {
                         continue;
                     }
-                    // 3. Tem conflito de horário (já alocado no mesmo dia)?
                     if (temConflitoDeHorario(c, evento, alocacoesGeradas)) {
                         continue;
                     }
-                    // 4. Regra de exclusão mútua (não trabalhar com):
-                    boolean conflitoNaoTrabalhar = false;
+                    boolean conflitoComAlocados = false;
                     for (Colaborador alocado : alocadosNoEvento) {
                         if ((c.getNaoTrabalharCom() != null && c.getNaoTrabalharCom().contains(alocado.getId())) ||
                             (alocado.getNaoTrabalharCom() != null && alocado.getNaoTrabalharCom().contains(c.getId()))) {
-                            conflitoNaoTrabalhar = true;
+                            conflitoComAlocados = true;
                             break;
                         }
                     }
-                    if (conflitoNaoTrabalhar) {
+                    if (conflitoComAlocados) {
                         continue;
                     }
-                    
-                    elegiveis.add(c);
+
+                    idsElegiveis.add(c.getId());
                 }
 
-                if (elegiveis.isEmpty()) {
-                    // Sem candidatos disponíveis para esta vaga
+                if (idsElegiveis.isEmpty()) {
                     break;
                 }
 
-                // Seleção de candidatos:
-                // 1. Menor workload na escala (para balanceamento)
-                // 2. Preferência de parceria com quem já está alocado neste evento
-                // 3. Critério estável por Nome
-                // 4. Critério estável por ID
-                final List<Colaborador> alocados = alocadosNoEvento;
-                Colaborador selecionado = elegiveis.stream()
-                        .min(Comparator.comparing((Colaborador c) -> contagemAlocacoes.get(c))
-                                .thenComparing((Colaborador c) -> {
-                                    boolean temPreferenciaMatch = false;
-                                    for (Colaborador alocado : alocados) {
-                                        if ((c.getPreferenciaTrabalharCom() != null && c.getPreferenciaTrabalharCom().contains(alocado.getId())) ||
-                                            (alocado.getPreferenciaTrabalharCom() != null && alocado.getPreferenciaTrabalharCom().contains(c.getId()))) {
-                                            temPreferenciaMatch = true;
-                                            break;
-                                        }
-                                    }
-                                    return temPreferenciaMatch ? 0 : 1; // 0 (com match) tem prioridade sobre 1 (sem match)
-                                })
-                                .thenComparing(Colaborador::getNome, Comparator.nullsLast(Comparator.naturalOrder()))
-                                .thenComparing(c -> c.getId() != null ? c.getId() : 0L))
-                        .orElse(null);
+                // 2. Agrupar colaboradores elegíveis em componentes de parceria (grupos vinculados com disponibilidade em comum)
+                List<List<Colaborador>> gruposCandidatos = obterGruposElegiveis(idsElegiveis, grafoParcerias, colabMap, avisos, evento);
 
-                if (selecionado != null) {
+                // 3. Filtrar apenas grupos que cabem inteiramente nas vagas restantes
+                List<List<Colaborador>> gruposQueCabem = new ArrayList<>();
+                for (List<Colaborador> grupo : gruposCandidatos) {
+                    if (grupo.size() <= vagasRestantes) {
+                        gruposQueCabem.add(grupo);
+                    } else if (grupo.size() > 1) {
+                        // Grupo de parceria não pôde ser atendido por falta de vagas
+                        String nomesGrupo = grupo.stream().map(Colaborador::getNome).sorted().collect(Collectors.joining(" + "));
+                        String chaveAviso = evento.getId() + ":" + nomesGrupo;
+                        if (parceriasNaoAtendidasNoEvento.add(chaveAviso)) {
+                            avisos.add("Aviso: Parceria " + nomesGrupo + " não pôde ser atendida no evento '" + evento.getNome() + "' (" + evento.getData() + "): vagas insuficientes (necessárias: " + grupo.size() + ", disponíveis: " + vagasRestantes + ").");
+                        }
+                    }
+                }
+
+                if (gruposQueCabem.isEmpty()) {
+                    // Nenhum grupo disponível cabe nas vagas restantes
+                    break;
+                }
+
+                // 4. Ordenar grupos candidatos por:
+                // a) Menor média de alocações (workload balance)
+                // b) Maior tamanho de grupo (prioriza atender parcerias antes de individuais)
+                // c) Menor alocação individual
+                // d) Ordem alfabética do menor nome do grupo
+                // e) Menor ID
+                gruposQueCabem.sort(Comparator
+                        .comparingDouble((List<Colaborador> g) -> g.stream().mapToInt(c -> contagemAlocacoes.getOrDefault(c, 0)).average().orElse(0.0))
+                        .thenComparing((List<Colaborador> g) -> -g.size())
+                        .thenComparingInt((List<Colaborador> g) -> g.stream().mapToInt(c -> contagemAlocacoes.getOrDefault(c, 0)).min().orElse(0))
+                        .thenComparing((List<Colaborador> g) -> g.stream().map(Colaborador::getNome).min(Comparator.nullsLast(Comparator.naturalOrder())).orElse(""))
+                        .thenComparingLong((List<Colaborador> g) -> g.stream().mapToLong(c -> c.getId() != null ? c.getId() : 0L).min().orElse(0L)));
+
+                List<Colaborador> grupoSelecionado = gruposQueCabem.get(0);
+
+                // 5. Alocar todos os colaboradores do grupo selecionado no evento
+                for (Colaborador selecionado : grupoSelecionado) {
                     Alocacao alocacao = Alocacao.builder()
                             .escala(escala)
                             .evento(evento)
                             .colaborador(selecionado)
                             .build();
-                    
+
                     alocacoesGeradas.add(alocacao);
                     alocadosNoEvento.add(selecionado);
-                    contagemAlocacoes.put(selecionado, contagemAlocacoes.get(selecionado) + 1);
+                    contagemAlocacoes.put(selecionado, contagemAlocacoes.getOrDefault(selecionado, 0) + 1);
                     preenchidasParaOEvento++;
                     vagasPreenchidas++;
                 }
@@ -223,10 +256,10 @@ public class EscalaService {
                 status = "TOTALMENTE_PREENCHIDO";
             } else if (preenchidasParaOEvento > 0) {
                 status = "PARCIALMENTE_PREENCHIDO";
-                motivo = "Sem colaboradores suficientes disponíveis por indisponibilidade ou conflito de horário";
+                motivo = "Sem colaboradores suficientes disponíveis por indisponibilidade, conflito de horário ou vagas insuficientes para grupos de parceria";
             } else {
                 status = "NAO_PREENCHIDO";
-                motivo = "Sem colaboradores disponíveis por indisponibilidade ou conflito de horário";
+                motivo = "Sem colaboradores disponíveis por indisponibilidade, conflito de horário ou vagas insuficientes para grupos de parceria";
             }
 
             List<String> ministrosNomes = alocadosNoEvento.stream()
@@ -247,8 +280,9 @@ public class EscalaService {
                     .build());
         }
 
-        // Vincular alocações à escala
+        // Vincular alocações e avisos à escala
         escala.setAlocacoes(alocacoesGeradas);
+        escala.setAvisos(avisos);
 
         return RelatorioGeracao.builder()
                 .escalaId(escala.getId())
@@ -257,7 +291,111 @@ public class EscalaService {
                 .vagasPreenchidas(vagasPreenchidas)
                 .vagasRestantes(totalVagas - vagasPreenchidas)
                 .statusEventos(statusEventos)
+                .avisos(avisos)
                 .build();
+    }
+
+    /**
+     * Constrói o grafo de parcerias bidirecional e remove qualquer parceria que possua restrição
+     * de conflito ("Não trabalhar com"), adicionando aviso no relatório.
+     */
+    private Map<Long, Set<Long>> construirGrafoParcerias(List<Colaborador> colaboradores, Map<Long, Colaborador> colabMap, List<String> avisos) {
+        Map<Long, Set<Long>> grafo = new HashMap<>();
+        for (Colaborador c : colaboradores) {
+            grafo.put(c.getId(), new HashSet<>());
+        }
+
+        Set<String> conflitosRegistrados = new HashSet<>();
+
+        for (Colaborador u : colaboradores) {
+            if (u.getPreferenciaTrabalharCom() == null) continue;
+
+            for (Long vId : u.getPreferenciaTrabalharCom()) {
+                Colaborador v = colabMap.get(vId);
+                if (v == null || u.getId().equals(vId)) continue;
+
+                boolean uNaoTrabalhaV = u.getNaoTrabalharCom() != null && u.getNaoTrabalharCom().contains(vId);
+                boolean vNaoTrabalhaU = v.getNaoTrabalharCom() != null && v.getNaoTrabalharCom().contains(u.getId());
+
+                if (uNaoTrabalhaV || vNaoTrabalhaU) {
+                    // Precedência de conflito: conflito SEMPRE vence parceria
+                    String parChave = Math.min(u.getId(), vId) + "-" + Math.max(u.getId(), vId);
+                    if (conflitosRegistrados.add(parChave)) {
+                        avisos.add("Conflito: A parceria entre " + u.getNome() + " e " + v.getNome() +
+                                " foi ignorada porque há uma restrição de conflito ('Não trabalhar com').");
+                    }
+                } else {
+                    // Relação bidirecional garantida no grafo de parcerias
+                    grafo.get(u.getId()).add(vId);
+                    grafo.computeIfAbsent(vId, k -> new HashSet<>()).add(u.getId());
+                }
+            }
+        }
+
+        return grafo;
+    }
+
+    /**
+     * Encontra componentes conexas (grupos vinculados) para os colaboradores elegíveis no evento.
+     * Trata vínculos diretos e em cadeia (A->B, B->C) como grupo único.
+     */
+    private List<List<Colaborador>> obterGruposElegiveis(Set<Long> idsElegiveis, Map<Long, Set<Long>> grafoParcerias, Map<Long, Colaborador> colabMap, List<String> avisos, Evento evento) {
+        Set<Long> visitados = new HashSet<>();
+        List<List<Colaborador>> grupos = new ArrayList<>();
+
+        for (Long id : idsElegiveis) {
+            if (visitados.contains(id)) continue;
+
+            List<Colaborador> componente = new ArrayList<>();
+            Queue<Long> fila = new LinkedList<>();
+            fila.add(id);
+            visitados.add(id);
+
+            while (!fila.isEmpty()) {
+                Long atualId = fila.poll();
+                Colaborador c = colabMap.get(atualId);
+                if (c != null) {
+                    componente.add(c);
+                }
+
+                Set<Long> vizinhos = grafoParcerias.getOrDefault(atualId, Collections.emptySet());
+                for (Long vizId : vizinhos) {
+                    if (idsElegiveis.contains(vizId) && !visitados.contains(vizId)) {
+                        visitados.add(vizId);
+                        fila.add(vizId);
+                    }
+                }
+            }
+
+            // Validar conflitos internos dentro da componente
+            boolean conflitoInterno = false;
+            for (int i = 0; i < componente.size(); i++) {
+                Colaborador c1 = componente.get(i);
+                for (int j = i + 1; j < componente.size(); j++) {
+                    Colaborador c2 = componente.get(j);
+                    boolean c1NaoTrabalhaC2 = c1.getNaoTrabalharCom() != null && c1.getNaoTrabalharCom().contains(c2.getId());
+                    boolean c2NaoTrabalhaC1 = c2.getNaoTrabalharCom() != null && c2.getNaoTrabalharCom().contains(c1.getId());
+                    if (c1NaoTrabalhaC2 || c2NaoTrabalhaC1) {
+                        conflitoInterno = true;
+                        avisos.add("Conflito: Vínculo de grupo entre " + c1.getNome() + " e " + c2.getNome() +
+                                " no evento '" + evento.getNome() + "' foi desmembrado devido a conflito de 'Não trabalhar com'.");
+                        break;
+                    }
+                }
+                if (conflitoInterno) break;
+            }
+
+            if (conflitoInterno) {
+                // Se houver conflito interno no grupo encadeado, desmembra os colaboradores individualmente
+                for (Colaborador c : componente) {
+                    grupos.add(List.of(c));
+                }
+            } else {
+                grupos.add(componente);
+            }
+        }
+
+        return grupos;
     }
 
     private boolean temConflitoDeHorario(Colaborador c, Evento eventoProposto, List<Alocacao> alocacoesExistentes) {

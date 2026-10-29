@@ -3,7 +3,7 @@ import { escalaService } from '../services/api';
 import type { Escala } from '../types';
 import { formatarDataComDiaSemana } from '../utils/dateUtils';
 import { exportarEscalaParaExcel } from '../utils/excelExport';
-import { Calendar, Trash2, ChevronRight, ChevronDown, Clock, FileText, Phone, Paintbrush, FileSpreadsheet } from 'lucide-react';
+import { Calendar, Trash2, ChevronRight, ChevronDown, Clock, FileText, Phone, Paintbrush, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const Historico: React.FC = () => {
@@ -217,6 +217,24 @@ const Historico: React.FC = () => {
                                     <FileSpreadsheet size={14} /> Exportar para Excel
                                   </button>
                                 </div>
+
+                                {/* Avisos e Observações da Escala */}
+                                {selectedEscala.avisos && selectedEscala.avisos.length > 0 && (
+                                  <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 space-y-2">
+                                    <div className="flex items-center gap-2 text-amber-800 font-bold text-xs uppercase tracking-wider">
+                                      <AlertTriangle size={15} className="text-amber-600 flex-shrink-0" />
+                                      Avisos e Observações de Parcerias ({selectedEscala.avisos.length})
+                                    </div>
+                                    <ul className="space-y-1.5 text-xs text-amber-900">
+                                      {selectedEscala.avisos.map((aviso, aIdx) => (
+                                        <li key={aIdx} className="flex items-start gap-2 bg-amber-100/50 p-2 rounded-xl">
+                                          <span className="text-amber-600 font-bold mt-0.5">•</span>
+                                          <span>{aviso}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   {selectedEscala.eventos?.map((evt, idx) => {

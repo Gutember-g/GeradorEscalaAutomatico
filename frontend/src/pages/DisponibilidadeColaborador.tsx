@@ -39,6 +39,7 @@ const DisponibilidadeColaborador: React.FC<DisponibilidadeColaboradorProps> = ({
   const [colaboradorInfo, setColaboradorInfo] = useState<Colaborador>(colaborador);
   const [naoTrabalharCom, setNaoTrabalharCom] = useState<number[]>([]);
   const [preferenciaTrabalharCom, setPreferenciaTrabalharCom] = useState<number[]>([]);
+  const [salvandoRelacionamentos, setSalvandoRelacionamentos] = useState<boolean>(false);
 
   // View Mode & selected calendar day
   const [viewMode, setViewMode] = useState<'lista' | 'calendario'>('calendario');
@@ -73,30 +74,56 @@ const DisponibilidadeColaborador: React.FC<DisponibilidadeColaboradorProps> = ({
       .catch(console.error);
   }, [mes, ano]);
 
+  // Carrega informações e preferências permanentes do colaborador uma vez
   useEffect(() => {
     if (colaborador.id) {
-      carregarDados();
+      colaboradorService.buscarPorId(colaborador.id!)
+        .then(colabData => {
+          setColaboradorInfo(colabData);
+          setNaoTrabalharCom(colabData.naoTrabalharCom || []);
+          setPreferenciaTrabalharCom(colabData.preferenciaTrabalharCom || []);
+        })
+        .catch(console.error);
+    }
+  }, [colaborador.id]);
+
+  // Carrega disponibilidades do mês selecionado
+  useEffect(() => {
+    if (colaborador.id) {
+      carregarDisponibilidades();
       setSelectedDay(null); // Reset day selection on period change
     }
   }, [colaborador.id, mes, ano]);
 
-  const carregarDados = async () => {
+  const carregarDisponibilidades = async () => {
     try {
       setLoading(true);
       setError(null);
-      const [colabData, dispData] = await Promise.all([
-        colaboradorService.buscarPorId(colaborador.id!),
-        colaboradorService.obterDisponibilidade(colaborador.id!, mes, ano)
-      ]);
-      setColaboradorInfo(colabData);
-      setNaoTrabalharCom(colabData.naoTrabalharCom || []);
-      setPreferenciaTrabalharCom(colabData.preferenciaTrabalharCom || []);
+      const dispData = await colaboradorService.obterDisponibilidade(colaborador.id!, mes, ano);
       setDisponibilidades(dispData);
     } catch (err: any) {
       setError('Erro ao carregar os eventos e disponibilidades para o mês selecionado.');
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSalvarRelacionamentos = async () => {
+    const loadingToast = toast.loading('Salvando parcerias e restrições...');
+    try {
+      setSalvandoRelacionamentos(true);
+      await colaboradorService.atualizar(colaborador.id!, {
+        ...colaboradorInfo,
+        naoTrabalharCom,
+        preferenciaTrabalharCom
+      });
+      toast.success('Parcerias e restrições salvas! Válidas permanentemente para todas as escalas. ✅', { id: loadingToast });
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Erro ao salvar parcerias e conflitos. ❌', { id: loadingToast });
+    } finally {
+      setSalvandoRelacionamentos(false);
     }
   };
 
@@ -224,11 +251,34 @@ const DisponibilidadeColaborador: React.FC<DisponibilidadeColaboradorProps> = ({
 
       {/* Seção de Preferências Cruzadas (naoTrabalharCom e preferenciaTrabalharCom) */}
       <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-6 shadow-sm">
-        <div className="border-b border-slate-100 pb-4">
-          <h2 className="text-base font-bold text-slate-800">
-            Preferências de Cooperação / Conflitos
-          </h2>
-          <p className="text-slate-400 text-xs mt-0.5">Defina restrições de escala mútua e preferências de escalação conjunta no mesmo evento.</p>
+        <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-slate-800">
+                Preferências de Cooperação / Conflitos
+              </h2>
+              <span className="text-[10px] bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-full border border-indigo-100/60">
+                Configuração Permanente
+              </span>
+            </div>
+            <p className="text-slate-400 text-xs mt-0.5">
+              Defina parcerias obrigatórias e restrições de conflito. As marcações são salvas permanentemente e valem para todas as escalas até serem alteradas.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleSalvarRelacionamentos}
+            disabled={salvandoRelacionamentos}
+            className="self-start sm:self-center flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white font-medium text-xs py-2 px-3.5 rounded-xl transition duration-150 disabled:opacity-50 cursor-pointer shadow-xs"
+            title="Salvar apenas parcerias e conflitos imediatamente"
+          >
+            {salvandoRelacionamentos ? (
+              <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
+            ) : (
+              <Save size={14} />
+            )}
+            Salvar Parcerias e Conflitos
+          </button>
         </div>
 
         {todosColaboradores.length <= 1 ? (
@@ -237,9 +287,14 @@ const DisponibilidadeColaborador: React.FC<DisponibilidadeColaboradorProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Não Trabalhar Com */}
             <div className="space-y-3">
-              <label className="flex items-center gap-1.5 text-xs font-bold text-rose-600 uppercase tracking-wider">
-                <ShieldAlert size={14} /> Não trabalhar com (Restrição de Conflito)
-              </label>
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-bold text-rose-600 uppercase tracking-wider">
+                  <ShieldAlert size={14} /> Não trabalhar com (Restrição de Conflito)
+                </label>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Regra soberana: nunca serão escalados no mesmo evento. Sempre prevalece sobre parcerias.
+                </p>
+              </div>
               <div className="max-h-48 overflow-y-auto border border-rose-100/50 rounded-xl p-3 bg-rose-50/10 space-y-1.5">
                 {outrosColaboradores.map(c => {
                   const isChecked = naoTrabalharCom.includes(c.id!);
@@ -267,9 +322,14 @@ const DisponibilidadeColaborador: React.FC<DisponibilidadeColaboradorProps> = ({
 
             {/* Preferência de parceria */}
             <div className="space-y-3">
-              <label className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 uppercase tracking-wider">
-                <Heart size={14} /> Preferência para trabalhar com (Parcerias)
-              </label>
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 uppercase tracking-wider">
+                  <Heart size={14} /> Preferência para trabalhar com (Parcerias Obrigatórias)
+                </label>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Quando ambos estiverem disponíveis no mesmo evento, serão escalados obrigatoriamente juntos.
+                </p>
+              </div>
               <div className="max-h-48 overflow-y-auto border border-emerald-100/50 rounded-xl p-3 bg-emerald-50/10 space-y-1.5">
                 {outrosColaboradores.map(c => {
                   const isChecked = preferenciaTrabalharCom.includes(c.id!);

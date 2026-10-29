@@ -136,6 +136,7 @@ public class EscalaController {
                 .dataFim(e.getDataFim())
                 .eventos(eventos)
                 .alocacoes(alocacoes)
+                .avisos(e.getAvisos() != null ? new ArrayList<>(e.getAvisos()) : new ArrayList<>())
                 .build();
     }
 }

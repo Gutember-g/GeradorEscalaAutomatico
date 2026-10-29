@@ -198,11 +198,17 @@ public class ColaboradorController {
                 .map(colaborador -> {
                     colaborador.setNome(dto.getNome());
                     colaborador.setTelefone(dto.getTelefone());
-                    colaborador.setNaoTrabalharCom(dto.getNaoTrabalharCom() != null ? dto.getNaoTrabalharCom() : new ArrayList<>());
-                    colaborador.setPreferenciaTrabalharCom(dto.getPreferenciaTrabalharCom() != null ? dto.getPreferenciaTrabalharCom() : new ArrayList<>());
+                    if (dto.getNaoTrabalharCom() != null) {
+                        colaborador.setNaoTrabalharCom(dto.getNaoTrabalharCom());
+                    }
+                    if (dto.getPreferenciaTrabalharCom() != null) {
+                        colaborador.setPreferenciaTrabalharCom(dto.getPreferenciaTrabalharCom());
+                    }
 
                     Colaborador atualizado = colaboradorRepository.save(colaborador);
-                    atualizarReciprocidade(atualizado, tenantId);
+                    if (dto.getNaoTrabalharCom() != null || dto.getPreferenciaTrabalharCom() != null) {
+                        atualizarReciprocidade(atualizado, tenantId);
+                    }
 
                     // Para a resposta, recarregar com índices para refletir reciprocidade atualizada
                     List<Colaborador> todos = carregarTodosComRelacionamentos(tenantId);

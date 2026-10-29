@@ -35,6 +35,7 @@ export interface Escala {
   dataFim: string;
   eventos: Evento[];
   alocacoes: Alocacao[];
+  avisos?: string[];
 }
 
 export interface StatusEvento {
@@ -57,6 +58,7 @@ export interface RelatorioGeracao {
   vagasPreenchidas: number;
   vagasRestantes: number;
   statusEventos: StatusEvento[];
+  avisos?: string[];
 }
 
 export interface Disponibilidade {

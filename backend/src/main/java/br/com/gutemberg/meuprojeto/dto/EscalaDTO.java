@@ -11,6 +11,7 @@ public class EscalaDTO {
     private LocalDate dataFim;
     private List<EventoDTO> eventos = new ArrayList<>();
     private List<AlocacaoDTO> alocacoes = new ArrayList<>();
+    private List<String> avisos = new ArrayList<>();
 
     public EscalaDTO() {
     }
@@ -22,6 +23,17 @@ public class EscalaDTO {
         this.dataFim = dataFim;
         this.eventos = eventos != null ? eventos : new ArrayList<>();
         this.alocacoes = alocacoes != null ? alocacoes : new ArrayList<>();
+        this.avisos = new ArrayList<>();
+    }
+
+    public EscalaDTO(Long id, String nome, LocalDate dataInicio, LocalDate dataFim, List<EventoDTO> eventos, List<AlocacaoDTO> alocacoes, List<String> avisos) {
+        this.id = id;
+        this.nome = nome;
+        this.dataInicio = dataInicio;
+        this.dataFim = dataFim;
+        this.eventos = eventos != null ? eventos : new ArrayList<>();
+        this.alocacoes = alocacoes != null ? alocacoes : new ArrayList<>();
+        this.avisos = avisos != null ? avisos : new ArrayList<>();
     }
 
     public Long getId() {
@@ -72,6 +84,14 @@ public class EscalaDTO {
         this.alocacoes = alocacoes != null ? alocacoes : new ArrayList<>();
     }
 
+    public List<String> getAvisos() {
+        return avisos;
+    }
+
+    public void setAvisos(List<String> avisos) {
+        this.avisos = avisos != null ? avisos : new ArrayList<>();
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -83,6 +103,7 @@ public class EscalaDTO {
         private LocalDate dataFim;
         private List<EventoDTO> eventos = new ArrayList<>();
         private List<AlocacaoDTO> alocacoes = new ArrayList<>();
+        private List<String> avisos = new ArrayList<>();
 
         public Builder id(Long id) {
             this.id = id;
@@ -114,8 +135,13 @@ public class EscalaDTO {
             return this;
         }
 
+        public Builder avisos(List<String> avisos) {
+            this.avisos = avisos;
+            return this;
+        }
+
         public EscalaDTO build() {
-            return new EscalaDTO(id, nome, dataInicio, dataFim, eventos, alocacoes);
+            return new EscalaDTO(id, nome, dataInicio, dataFim, eventos, alocacoes, avisos);
         }
     }
 }
