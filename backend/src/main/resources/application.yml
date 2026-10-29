@@ -9,6 +9,12 @@ spring:
     username: ${DATABASE_USERNAME:postgres}
     password: ${DATABASE_PASSWORD:postgrespassword}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      minimum-idle: 2
+      maximum-pool-size: 10
+      idle-timeout: 300000
+      keepalive-time: 30000
+      connection-timeout: 20000
   jpa:
     hibernate:
       ddl-auto: validate
@@ -23,6 +29,10 @@ spring:
 
 server:
   port: ${PORT:8080}
+  tomcat:
+    connection-timeout: 20000
+    keep-alive-timeout: 60000
+    max-keep-alive-requests: 100
 
 app:
   cors:

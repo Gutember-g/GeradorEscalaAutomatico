@@ -13,6 +13,10 @@ vi.mock('../services/api', () => ({
     salvarDisponibilidade: vi.fn(),
     atualizar: vi.fn(),
   },
+  eventoService: {
+    listar: vi.fn(() => Promise.resolve([])),
+    buscarPorId: vi.fn(() => Promise.resolve({})),
+  },
   escalaService: {
     listar: vi.fn(() => Promise.resolve([])),
     buscarPorId: vi.fn(() => Promise.resolve({})),

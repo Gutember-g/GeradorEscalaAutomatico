@@ -24,6 +24,7 @@ const GeradorEscala: React.FC = () => {
 
   // Resultado
   const [relatorio, setRelatorio] = useState<RelatorioGeracao | null>(null);
+  const [errorData, setErrorData] = useState<string | null>(null);
 
   useEffect(() => {
     carregarDados();
@@ -63,6 +64,7 @@ const GeradorEscala: React.FC = () => {
   const carregarDados = async () => {
     try {
       setLoadingData(true);
+      setErrorData(null);
       const [cols, evts] = await Promise.all([
         colaboradorService.listar(),
         eventoService.listar()
@@ -70,8 +72,18 @@ const GeradorEscala: React.FC = () => {
       setColaboradores(cols);
       setEventos(evts);
       setSelectedColaboradorIds(cols.map(c => c.id!).filter(Boolean));
-    } catch (err) {
-      console.error('Erro ao carregar dados:', err);
+
+      if (evts.length === 0) {
+        console.info('[API VAZIO] GeradorEscala: 0 eventos cadastrados retornados. Status HTTP: 200');
+      }
+      if (cols.length === 0) {
+        console.info('[API VAZIO] GeradorEscala: 0 colaboradores retornados. Status HTTP: 200');
+      }
+    } catch (err: any) {
+      const status = err.response?.status ?? 'SEM_RESPOSTA';
+      const body = err.response?.data;
+      console.error(`[API ERRO] GeradorEscala: Erro ao carregar dados (Status: ${status}):`, body || err.message);
+      setErrorData('Erro ao carregar colaboradores e eventos do servidor.');
     } finally {
       setLoadingData(false);
     }
@@ -198,6 +210,19 @@ const GeradorEscala: React.FC = () => {
         </h1>
         <p className="text-slate-500 text-sm mt-1">Gere a escala para o mês vigente automaticamente a partir das preferências e disponibilidades.</p>
       </div>
+
+      {errorData && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-xl text-sm flex items-center justify-between gap-3 shadow-xs">
+          <span>{errorData}</span>
+          <button
+            type="button"
+            onClick={carregarDados}
+            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold cursor-pointer transition"
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      )}
 
       {loadingData ? (
         <div className="flex justify-center items-center py-12">

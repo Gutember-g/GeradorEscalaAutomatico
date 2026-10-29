@@ -104,12 +104,17 @@ const Colaboradores: React.FC<ColaboradoresProps> = ({ onSelectColaboradorForDis
   const carregarColaboradores = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await colaboradorService.listar();
       setColaboradores(data);
-      setError(null);
+      if (data.length === 0) {
+        console.info('[API VAZIO] Colaboradores: 0 colaboradores retornados. Status HTTP: 200');
+      }
     } catch (err: any) {
+      const status = err.response?.status ?? 'SEM_RESPOSTA';
+      const body = err.response?.data;
+      console.error(`[API ERRO] Colaboradores: Erro ao carregar colaboradores (Status: ${status}):`, body || err.message);
       setError('Erro ao carregar colaboradores. Verifique se o servidor backend está rodando.');
-      console.error(err);
     } finally {
       setLoading(false);
     }

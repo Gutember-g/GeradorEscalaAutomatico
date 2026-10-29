@@ -77,17 +77,22 @@ const Eventos: React.FC = () => {
 
   useEffect(() => {
     carregarEventos();
-  }, []);
+  }, [currentMonth, currentYear]);
 
   const carregarEventos = async () => {
     try {
       setLoading(true);
-      const data = await eventoService.listar();
-      setEventos(data);
       setError(null);
+      const data = await eventoService.listar({ mes: currentMonth, ano: currentYear });
+      setEventos(data);
+      if (data.length === 0) {
+        console.info(`[API] Nenhum evento retornado para ${currentMonth}/${currentYear}. Status HTTP: 200`);
+      }
     } catch (err: any) {
+      const status = err.response?.status ?? 'SEM_RESPOSTA';
+      const body = err.response?.data;
+      console.error(`[API ERRO] Erro ao carregar eventos (Status: ${status}):`, body || err.message);
       setError('Erro ao carregar eventos. Verifique se o servidor backend está rodando.');
-      console.error(err);
     } finally {
       setLoading(false);
     }

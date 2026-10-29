@@ -78,6 +78,9 @@ public class EscalaController {
     @GetMapping
     public List<EscalaDTO> listar() {
         Long tenantId = SecurityUtils.getCurrentTenantId();
+        if (tenantId == null) {
+            return java.util.Collections.emptyList();
+        }
         return escalaRepository.findByOrganizacaoId(tenantId).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());

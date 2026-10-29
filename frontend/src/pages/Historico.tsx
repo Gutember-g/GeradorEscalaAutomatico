@@ -20,12 +20,17 @@ const Historico: React.FC = () => {
   const carregarEscalas = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await escalaService.listar();
       setEscalas(data);
-      setError(null);
+      if (data.length === 0) {
+        console.info('[API VAZIO] Historico: 0 escalas cadastradas retornadas. Status HTTP: 200');
+      }
     } catch (err: any) {
-      setError('Erro ao carregar histórico de escalas.');
-      console.error(err);
+      const status = err.response?.status ?? 'SEM_RESPOSTA';
+      const body = err.response?.data;
+      console.error(`[API ERRO] Historico: Erro ao carregar escalas (Status: ${status}):`, body || err.message);
+      setError('Erro ao carregar histórico de escalas. Verifique a conexão com o servidor.');
     } finally {
       setLoading(false);
     }
@@ -137,8 +142,15 @@ const Historico: React.FC = () => {
       </div>
 
       {error && (
-        <div className="bg-rose-50 border border-rose-100 text-rose-700 p-4 rounded-xl text-sm">
-          {error}
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-xl text-sm flex items-center justify-between gap-3 shadow-xs">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={carregarEscalas}
+            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold cursor-pointer transition"
+          >
+            Tentar Novamente
+          </button>
         </div>
       )}
 

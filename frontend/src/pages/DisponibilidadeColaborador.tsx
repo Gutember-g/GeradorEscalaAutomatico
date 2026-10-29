@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { colaboradorService, alocacaoService } from '../services/api';
+import { colaboradorService, alocacaoService, eventoService } from '../services/api';
 import type { AlocacaoLight } from '../services/api';
 import type { Colaborador, Disponibilidade } from '../types';
 import { formatarDataComDiaSemana, obterMesReferenciaPadrao } from '../utils/dateUtils';
@@ -107,11 +107,28 @@ const DisponibilidadeColaborador: React.FC<DisponibilidadeColaboradorProps> = ({
     try {
       setLoading(true);
       setError(null);
-      const dispData = await colaboradorService.obterDisponibilidade(colaborador.id!, mes, ano);
+      // Garantir que a chamada na tela de Disponibilidade envie o mês e o ano selecionados
+      const [dispData, eventosMes] = await Promise.all([
+        colaboradorService.obterDisponibilidade(colaborador.id!, mes, ano),
+        eventoService?.listar ? eventoService.listar({ mes, ano }) : Promise.resolve([])
+      ]);
       setDisponibilidades(dispData);
+
+      if (dispData.length === 0 && eventosMes.length === 0) {
+        console.info(
+          `%c[API VAZIO] Tela de Disponibilidade: 0 eventos e 0 disponibilidades para ${String(mes).padStart(2, '0')}/${ano}. Status HTTP: 200`,
+          'color: #f59e0b; font-weight: bold'
+        );
+      }
     } catch (err: any) {
-      setError('Erro ao carregar os eventos e disponibilidades para o mês selecionado.');
-      console.error(err);
+      const status = err.response?.status ?? 'SEM_RESPOSTA';
+      const body = err.response?.data;
+      console.error(
+        `%c[API ERRO] Erro ao carregar disponibilidades e eventos (Status: ${status}):`,
+        'color: #ef4444; font-weight: bold',
+        { status, body: body || err.message }
+      );
+      setError('Erro ao carregar os eventos e disponibilidades para o mês selecionado. Verifique se o servidor backend está rodando.');
     } finally {
       setLoading(false);
     }
@@ -265,8 +282,15 @@ const DisponibilidadeColaborador: React.FC<DisponibilidadeColaboradorProps> = ({
       </div>
 
       {error && (
-        <div className="bg-rose-50 border border-rose-100 text-rose-700 p-4 rounded-xl text-sm flex items-center gap-2">
-          {error}
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-xl text-sm flex items-center justify-between gap-3 shadow-xs">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => carregarDisponibilidades()}
+            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold cursor-pointer transition"
+          >
+            Tentar Novamente
+          </button>
         </div>
       )}
 

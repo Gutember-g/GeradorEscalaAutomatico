@@ -42,6 +42,9 @@ public class EventoController {
             @RequestParam(required = false) String inicio,
             @RequestParam(required = false) String fim) {
         Long tenantId = SecurityUtils.getCurrentTenantId();
+        if (tenantId == null) {
+            return java.util.Collections.emptyList();
+        }
         List<Evento> eventos;
 
         if (inicio != null && fim != null) {
@@ -49,6 +52,9 @@ public class EventoController {
             java.time.LocalDate dFim = java.time.LocalDate.parse(fim);
             eventos = eventoRepository.findByOrganizacaoIdAndDataBetween(tenantId, dInicio, dFim);
         } else if (mes != null && ano != null) {
+            if (mes < 1 || mes > 12) {
+                throw new IllegalArgumentException("Mês deve estar entre 1 e 12");
+            }
             java.time.LocalDate dInicio = java.time.LocalDate.of(ano, mes, 1);
             java.time.LocalDate dFim = dInicio.withDayOfMonth(dInicio.lengthOfMonth());
             eventos = eventoRepository.findByOrganizacaoIdAndDataBetween(tenantId, dInicio, dFim);
@@ -57,6 +63,11 @@ public class EventoController {
         }
 
         return eventos.stream()
+                .sorted((e1, e2) -> {
+                    int c = e1.getData().compareTo(e2.getData());
+                    if (c != 0) return c;
+                    return e1.getHoraInicio().compareTo(e2.getHoraInicio());
+                })
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
