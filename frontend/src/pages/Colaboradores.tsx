@@ -20,6 +20,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { obterMesReferenciaPadrao } from '../utils/dateUtils';
 import ModalImportarIndisponibilidadesMultiplos from '../components/ModalImportarIndisponibilidadesMultiplos';
 
 interface ColaboradoresProps {
@@ -53,8 +54,9 @@ const Colaboradores: React.FC<ColaboradoresProps> = ({ onSelectColaboradorForDis
   const [bulkPreferenciaTrabalharCom, setBulkPreferenciaTrabalharCom] = useState<number[]>([]);
 
   // Bulk availability state
-  const [bulkMes, setBulkMes] = useState<number>(new Date().getMonth() + 1);
-  const [bulkAno, setBulkAno] = useState<number>(new Date().getFullYear());
+  const refPadrao = obterMesReferenciaPadrao();
+  const [bulkMes, setBulkMes] = useState<number>(refPadrao.mes);
+  const [bulkAno, setBulkAno] = useState<number>(refPadrao.ano);
   const [bulkEventos, setBulkEventos] = useState<Evento[]>([]);
   const [bulkEventosLoading, setBulkEventosLoading] = useState(false);
   const [bulkIndisponibilidades, setBulkIndisponibilidades] = useState<{[key: number]: 'indisponivel' | 'disponivel' | 'manter'}>({});

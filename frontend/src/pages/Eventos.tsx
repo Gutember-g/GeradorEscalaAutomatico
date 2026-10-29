@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { eventoService } from '../services/api';
 import type { Evento } from '../types';
-import { formatarDataComDiaSemana, getEventsByMonth } from '../utils/dateUtils';
+import { formatarDataComDiaSemana, getEventsByMonth, obterMesReferenciaPadrao } from '../utils/dateUtils';
 import { 
   Plus, 
   Trash2, 
@@ -52,8 +52,9 @@ const Eventos: React.FC = () => {
   const [viewMode, setViewMode] = useState<'lista' | 'calendario'>('calendario');
 
   // Calendar states
-  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const refPadrao = obterMesReferenciaPadrao();
+  const [currentMonth, setCurrentMonth] = useState(refPadrao.mes);
+  const [currentYear, setCurrentYear] = useState(refPadrao.ano);
 
   // Duplication Modal states
   const [duplicatingEvent, setDuplicatingEvent] = useState<Evento | null>(null);
@@ -448,9 +449,9 @@ const Eventos: React.FC = () => {
   };
 
   const handleHoje = () => {
-    const hoje = new Date();
-    setCurrentMonth(hoje.getMonth() + 1);
-    setCurrentYear(hoje.getFullYear());
+    const ref = obterMesReferenciaPadrao();
+    setCurrentMonth(ref.mes);
+    setCurrentYear(ref.ano);
   };
 
   return (

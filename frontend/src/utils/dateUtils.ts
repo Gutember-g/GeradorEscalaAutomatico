@@ -17,6 +17,20 @@ export const formatarDataComDiaSemana = (dataStr: string): string => {
   return `${dia}/${mes}/${ano} - ${diaSemana}`;
 };
 
+/**
+ * Retorna o período de referência padrão para a aplicação (um mês à frente do atual).
+ * Exemplo: se o mês atual for Outubro/2026, retorna mes = 11 (Novembro) e ano = 2026.
+ * Se o mês atual for Dezembro/2026, retorna mes = 1 (Janeiro) e ano = 2027.
+ */
+export const obterMesReferenciaPadrao = (): { mes: number; ano: number } => {
+  const hoje = new Date();
+  const proximo = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
+  return {
+    mes: proximo.getMonth() + 1, // 1-indexed (1 a 12)
+    ano: proximo.getFullYear()
+  };
+};
+
 export const obterDatasMesAtual = () => {
   const hoje = new Date();
   const ano = hoje.getFullYear();

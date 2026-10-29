@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { colaboradorService, alocacaoService } from '../services/api';
 import type { AlocacaoLight } from '../services/api';
 import type { Colaborador, Disponibilidade } from '../types';
-import { formatarDataComDiaSemana } from '../utils/dateUtils';
+import { formatarDataComDiaSemana, obterMesReferenciaPadrao } from '../utils/dateUtils';
 import ModalIndisponibilidadeLote from '../components/ModalIndisponibilidadeLote';
 import { 
   Calendar as CalendarIcon, 
@@ -28,8 +28,9 @@ interface DisponibilidadeColaboradorProps {
 }
 
 const DisponibilidadeColaborador: React.FC<DisponibilidadeColaboradorProps> = ({ colaborador, onVoltar }) => {
-  const [mes, setMes] = useState<number>(new Date().getMonth() + 1);
-  const [ano, setAno] = useState<number>(new Date().getFullYear());
+  const refPadrao = obterMesReferenciaPadrao();
+  const [mes, setMes] = useState<number>(refPadrao.mes);
+  const [ano, setAno] = useState<number>(refPadrao.ano);
   const [disponibilidades, setDisponibilidades] = useState<Disponibilidade[]>([]);
   // G4: alocacoes leves em vez do array completo de Escala[]
   const [alocacoesDoMes, setAlocacoesDoMes] = useState<AlocacaoLight[]>([]);

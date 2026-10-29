@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { colaboradorService, eventoService, escalaService } from '../services/api';
 import type { Colaborador, Evento, RelatorioGeracao } from '../types';
-import { formatarDataComDiaSemana, obterDatasMesAtual } from '../utils/dateUtils';
+import { formatarDataComDiaSemana, obterMesReferenciaPadrao } from '../utils/dateUtils';
 import { exportarEscalaParaExcel } from '../utils/excelExport';
 import { Sparkles, Calendar, Users, Wand2, CheckCircle2, AlertTriangle, AlertCircle, ClipboardCheck, Paintbrush, FileSpreadsheet } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -12,9 +12,9 @@ const GeradorEscala: React.FC = () => {
   const [loadingData, setLoadingData] = useState(true);
   const [generating, setGenerating] = useState(false);
   
-
-  const [mesEscala, setMesEscala] = useState<number>(new Date().getMonth() + 1);
-  const [anoEscala, setAnoEscala] = useState<number>(new Date().getFullYear());
+  const refPadrao = obterMesReferenciaPadrao();
+  const [mesEscala, setMesEscala] = useState<number>(refPadrao.mes);
+  const [anoEscala, setAnoEscala] = useState<number>(refPadrao.ano);
   const [nomeEscala, setNomeEscala] = useState('');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');

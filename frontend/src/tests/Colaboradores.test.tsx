@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import Colaboradores from '../pages/Colaboradores';
 import { colaboradorService, eventoService } from '../services/api';
+import { obterMesReferenciaPadrao } from '../utils/dateUtils';
 import toast from 'react-hot-toast';
 
 vi.mock('../services/api', () => ({
@@ -108,8 +109,9 @@ describe('Colaboradores Component', () => {
   });
 
   it('deve ordenar cronologicamente os eventos no modal de edicao em lote na aba disponibilidade', async () => {
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1;
+    const refPadrao = obterMesReferenciaPadrao();
+    const currentYear = refPadrao.ano;
+    const currentMonth = refPadrao.mes;
     const monthStr = String(currentMonth).padStart(2, '0');
 
     (colaboradorService.listar as any).mockResolvedValue([

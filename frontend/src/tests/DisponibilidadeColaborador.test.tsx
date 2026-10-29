@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import DisponibilidadeColaborador from '../pages/DisponibilidadeColaborador';
 import { colaboradorService, escalaService, alocacaoService } from '../services/api';
+import { obterMesReferenciaPadrao } from '../utils/dateUtils';
 import toast from 'react-hot-toast';
 
 vi.mock('../services/api', () => ({
@@ -24,8 +25,9 @@ vi.mock('../services/api', () => ({
 describe('DisponibilidadeColaborador Component', () => {
   const mockColaborador = { id: 1, nome: 'João Silva', telefone: '9999-9999' };
   const mockOnVoltar = vi.fn();
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth() + 1;
+  const refPadrao = obterMesReferenciaPadrao();
+  const currentYear = refPadrao.ano;
+  const currentMonth = refPadrao.mes;
   const monthStr = String(currentMonth).padStart(2, '0');
 
   beforeEach(() => {

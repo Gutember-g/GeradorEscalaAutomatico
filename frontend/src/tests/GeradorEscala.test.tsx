@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import GeradorEscala from '../pages/GeradorEscala';
 import { colaboradorService, eventoService, escalaService } from '../services/api';
+import { obterMesReferenciaPadrao } from '../utils/dateUtils';
 import toast from 'react-hot-toast';
 
 vi.mock('../services/api', () => ({
@@ -23,9 +24,9 @@ vi.mock('../context/AuthContext', () => ({
   })
 }));
 
-const now = new Date();
-const currentYear = now.getFullYear();
-const currentMonthStr = String(now.getMonth() + 1).padStart(2, '0');
+const refPadrao = obterMesReferenciaPadrao();
+const currentYear = refPadrao.ano;
+const currentMonthStr = String(refPadrao.mes).padStart(2, '0');
 const mockDate = `${currentYear}-${currentMonthStr}-10`;
 
 describe('GeradorEscala Component', () => {

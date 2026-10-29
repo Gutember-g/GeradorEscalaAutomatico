@@ -21,6 +21,7 @@ import {
   type ParsedUnavailabilityEntry
 } from '../utils/unavailabilityParser';
 import { colaboradorService, eventoService } from '../services/api';
+import { obterMesReferenciaPadrao } from '../utils/dateUtils';
 
 interface ModalImportarIndisponibilidadesMultiplosProps {
   isOpen: boolean;
@@ -43,8 +44,9 @@ const ModalImportarIndisponibilidadesMultiplos: React.FC<ModalImportarIndisponib
   onSucesso
 }) => {
   const [passo, setPasso] = useState<'upload' | 'previa'>('upload');
-  const [mes, setMes] = useState<number>(new Date().getMonth() + 1);
-  const [ano, setAno] = useState<number>(new Date().getFullYear());
+  const refPadrao = obterMesReferenciaPadrao();
+  const [mes, setMes] = useState<number>(refPadrao.mes);
+  const [ano, setAno] = useState<number>(refPadrao.ano);
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [processando, setProcessando] = useState<boolean>(false);
   const [salvando, setSalvando] = useState<boolean>(false);

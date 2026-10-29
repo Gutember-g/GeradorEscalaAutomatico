@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import Eventos from '../pages/Eventos';
 import { eventoService } from '../services/api';
+import { obterMesReferenciaPadrao } from '../utils/dateUtils';
 
 vi.mock('../services/api', () => ({
   eventoService: {
@@ -75,9 +76,9 @@ describe('Eventos Component', () => {
   });
 
   it('deve ordenar eventos cronologicamente e filtrar por nome', async () => {
-    const hoje = new Date();
-    const ano = hoje.getFullYear();
-    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const refPadrao = obterMesReferenciaPadrao();
+    const ano = refPadrao.ano;
+    const mes = String(refPadrao.mes).padStart(2, '0');
 
     (eventoService.listar as any).mockResolvedValue([
       { id: 2, nome: 'Missa Tarde', data: `${ano}-${mes}-20`, horaInicio: '18:00:00', vagasNecessarias: 3 },
@@ -104,9 +105,9 @@ describe('Eventos Component', () => {
   });
 
   it('deve abrir o modal de duplicacao ao clicar no botao copiar', async () => {
-    const hoje = new Date();
-    const ano = hoje.getFullYear();
-    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const refPadrao = obterMesReferenciaPadrao();
+    const ano = refPadrao.ano;
+    const mes = String(refPadrao.mes).padStart(2, '0');
 
     (eventoService.listar as any).mockResolvedValue([
       { id: 1, nome: 'Missa de Domingo', data: `${ano}-${mes}-12`, horaInicio: '10:00:00', vagasNecessarias: 2 }
