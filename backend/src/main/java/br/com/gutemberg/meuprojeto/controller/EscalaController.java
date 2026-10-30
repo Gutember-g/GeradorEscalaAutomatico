@@ -34,11 +34,13 @@ public class EscalaController {
     private final EscalaService escalaService;
     private final EscalaRepository escalaRepository;
     private final ColaboradorRepository colaboradorRepository;
+    private final br.com.gutemberg.meuprojeto.repository.EventoRepository eventoRepository;
 
-    public EscalaController(EscalaService escalaService, EscalaRepository escalaRepository, ColaboradorRepository colaboradorRepository) {
+    public EscalaController(EscalaService escalaService, EscalaRepository escalaRepository, ColaboradorRepository colaboradorRepository, br.com.gutemberg.meuprojeto.repository.EventoRepository eventoRepository) {
         this.escalaService = escalaService;
         this.escalaRepository = escalaRepository;
         this.colaboradorRepository = colaboradorRepository;
+        this.eventoRepository = eventoRepository;
     }
 
     @PostMapping("/gerar")
@@ -100,6 +102,14 @@ public class EscalaController {
         Long tenantId = SecurityUtils.getCurrentTenantId();
         return escalaRepository.findByIdAndOrganizacaoId(id, tenantId)
                 .map(escala -> {
+                    // Desvincular eventos antes de deletar a escala para proteger os eventos originais
+                    if (escala.getEventos() != null) {
+                        for (Evento e : escala.getEventos()) {
+                            e.setEscala(null);
+                        }
+                        eventoRepository.saveAll(escala.getEventos());
+                        escala.getEventos().clear();
+                    }
                     escalaRepository.delete(escala);
                     return ResponseEntity.noContent().<Void>build();
                 })

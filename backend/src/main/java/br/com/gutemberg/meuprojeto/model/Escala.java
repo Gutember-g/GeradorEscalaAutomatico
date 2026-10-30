@@ -37,7 +37,7 @@ public class Escala {
     @Column(name = "data_fim", nullable = false)
     private LocalDate dataFim;
 
-    @OneToMany(mappedBy = "escala", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "escala")
     @Fetch(FetchMode.SUBSELECT)
     private List<Evento> eventos = new ArrayList<>();
 
